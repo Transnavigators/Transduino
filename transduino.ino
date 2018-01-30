@@ -1,5 +1,6 @@
 #include <Sabertooth.h>
-//#include <EnableInterrupt.h>
+#include <SPI.h>
+#include <util/crc16.h>
 
 //Setup Sabertooth on address 128
 Sabertooth ST(128);
@@ -24,6 +25,15 @@ const uint8_t A_2 = digitalPinToInterrupt(3);
 const uint8_t B_2 = 5;
 //const uint8_t Z_2 = 2;
 
+// Slave Select pins for encoders 1 and 2
+// Feel free to reallocate these pins to best suit your circuit
+const int slaveSelectEnc1 = 7;
+const int slaveSelectEnc2 = 8;
+
+// These hold the current encoder count.
+signed long encoder1Count = 0;
+signed long encoder2Count = 0;
+
 //The measured max speed of the motors at power = 127 in m/s
 const float FULL_SPEED = 1;
 
@@ -39,6 +49,7 @@ const float ALPHA = 0.8;
 //The number of rotations to travel a meter
 //(2*pi*R/Gear ratio)
 //Let R = 3", Gear ratio = 30
+//TODO: Replace with actual numbers
 const float ROT_PER_M = 62.6594263365;
 
 //The width between wheels
@@ -46,10 +57,6 @@ const float WIDTH = 0.762;
 //The time in us before the arduino should adjust the motor power again
 //(1/100kHz)
 const unsigned long CHECK_DELAY = 100;
-
-//Number of rotations left before switching to the next command
-volatile int rotations1 = 0;
-volatile int rotations2 = 0;
 
 //Number of us to wait in between commands to try to get an exact distance
 int del = 0;
@@ -61,15 +68,24 @@ float angle = 0;
 float radius = 0;
 
 //Global variables for target velocity and acceleration
-float maxVel = 0;
-float maxAccel = 0;
-float maxCentripAccel = 0;
+long maxVel = 0;
+long maxAccel = 0;
+long maxCentripAccel = 0;
 
 //Ratio in speed between center and right wheel
 float C_to_R_Ratio = 1;
 
 //Ratio in speed from the center to left wheel
 float C_to_L_Ratio = 1;
+
+int rotations1 = 0;
+int rotations2 = 0;
+
+long currVel1 = 0;
+long currVel2 = 0;
+
+long currAccel1 = 0;
+long currAccel2 = 0;
 
 //Stores the next instruction
 int nextRotations1 = 0;
@@ -79,15 +95,8 @@ float nextAngle = 0;
 float nextC_to_R_Ratio = 1;
 float nextC_to_L_Ratio = 1;
 
-//PWM values from encoder
-volatile int prev_time1 = 0;
-volatile int prev_time2 = 0;
-
-//Estimated current velocity and acceleration
-volatile float currVel1 = 0;
-volatile float currVel2 = 0;
-volatile float currAccel1 = 0;
-volatile float currAccel2 = 0;
+//The last time the encoder's value was checked
+unsigned long prev_time = 0;
 
 //Current power of each motor
 int power1 = 0;
@@ -103,6 +112,16 @@ unsigned long checkTime = 0;
 volatile int cw1 = 1;
 volatile int cw2 = 1;
 
+struct DataPacket {
+  uint8_t Address;
+  uint8_t PacketID;
+  long encoder1Count;
+  long encoder2Count;
+  long deltaTime;
+  //int voltage;
+  uint16_t CRC;
+};
+
 void setup() {
 	//Encoder pins
 	for(int i=2;i<=7;i++) {
@@ -113,12 +132,13 @@ void setup() {
 		pinMode(i,OUTPUT);
 	}
 	
-	attachInterrupt(A_1, rising1, RISING);
-	attachInterrupt(A_2, rising2, RISING);
-	
 	//Set the ramping value which decides how fast the motor can change speeds (1-80, low is faster)
 	ST.setRamping(5);
-	
+
+  //Initialize the encoders
+  initEncoders();
+
+  //Initialize serial port
 	//Set the speed to the default Raspberry Pi/Lidar serial speed
 	Serial.begin(115200);
 	while (!Serial) {
@@ -126,73 +146,145 @@ void setup() {
 	}
 }
 
+uint16_t MakeCRC(struct DataPacket *InPacket)
+{
+ uint16_t TempCRC = 0;
+ TempCRC = _crc16_update(TempCRC, InPacket->Address);
+ TempCRC = _crc16_update(TempCRC, InPacket->PacketID);
+ TempCRC = _crc16_update(TempCRC, InPacket->encoder1Count);
+ TempCRC = _crc16_update(TempCRC, InPacket->encoder2Count);
+ TempCRC = _crc16_update(TempCRC, InPacket->deltaTime);
+ //TempCRC = _crc16_update(TempCRC, InPacket->voltage);
+ return TempCRC;
+}
+
+void initEncoders() {
+  
+  // Set slave selects as outputs
+  pinMode(slaveSelectEnc1, OUTPUT);
+  pinMode(slaveSelectEnc2, OUTPUT);
+  
+  // Raise select pins
+  // Communication begins when you drop the individual select signsl
+  digitalWrite(slaveSelectEnc1,HIGH);
+  digitalWrite(slaveSelectEnc2,HIGH);
+  
+  SPI.begin();
+  
+  // Initialize encoder 1
+  //    Clock division factor: 0
+  //    Negative index input
+  //    free-running count mode
+  //    x4 quatrature count mode (four counts per quadrature cycle)
+  // NOTE: For more information on commands, see datasheet
+  digitalWrite(slaveSelectEnc1,LOW);        // Begin SPI conversation
+  SPI.transfer(0x88);                       // Write to MDR0
+  SPI.transfer(0x03);                       // Configure to 4 byte mode
+  digitalWrite(slaveSelectEnc1,HIGH);       // Terminate SPI conversation 
+
+  // Initialize encoder 2
+  //    Clock division factor: 0
+  //    Negative index input
+  //    free-running count mode
+  //    x4 quatrature count mode (four counts per quadrature cycle)
+  // NOTE: For more information on commands, see datasheet
+  digitalWrite(slaveSelectEnc2,LOW);        // Begin SPI conversation
+  SPI.transfer(0x88);                       // Write to MDR0
+  SPI.transfer(0x03);                       // Configure to 4 byte mode
+  digitalWrite(slaveSelectEnc2,HIGH);       // Terminate SPI conversation 
+}
+
 void updateInstruction() {
 	//Both sides reached their goal
-	if(rotations1 <= 0 && rotations2 <= 0) {
-		//Don't let the control loop send a new command for the delay to finish fractional turns
-		checkTime = micros()+(del/currVel1);
-		
-		//Use the next instruction variables
-		rotations1 = nextRotations1;
-		rotations2 = nextRotations2;
-		angle = nextAngle;
-		C_to_L_Ratio = nextC_to_L_Ratio;
-		C_to_R_Ratio = nextC_to_R_Ratio;
-		
-		//Stop the motor if the next instruction is to stop
-		//Avoid floating point equality check
-		if(rotations1 == 0 && rotations2 == 0 && abs(angle) < 0.0001) {
-			ST.motor(1,0);
-			ST.motor(2,0);
-		}
+	//Don't let the control loop send a new command for the delay to finish fractional turns
+	checkTime = micros()+(del/currVel1);
+	
+	//Use the next instruction variables
+	rotations1 = nextRotations1;
+	rotations2 = nextRotations2;
+	angle = nextAngle;
+	C_to_L_Ratio = nextC_to_L_Ratio;
+	C_to_R_Ratio = nextC_to_R_Ratio;
+	
+	//Stop the motor if the next instruction is to stop
+	//Avoid floating point equality check
+	if(rotations1 == 0 && rotations2 == 0 && abs(angle) < 0.0001) {
+		ST.motor(1,0);
+		ST.motor(2,0);
 	}
 }
 
-void rising1() {
-	int pwm_period = micros()-prev_time1;
-	
-	//If B is low when A rises, B is out of phase with A by 90 degrees to the right and the motor is clockwise
-	//If B is high when A rises, B is out of phase with A by 90 degrees to the left and the motor is counter clockwise
-	cw1 = digitalRead(B_1);
-	//Calculate the equivalent velocity in m/s at the center
-	//(1 rotation / [pwm_period] s)*(1000000us / s)*(1m / [ROT_PER_M] rotation)*(1 m/s / C_to_L_Ratio m/s)
-	if(cw1 == 1) {
-		float nextVel = (1000000/ROT_PER_M)/(pwm_period*C_to_L_Ratio);
-	}
-	else {
-		float nextVel = -(1000000/ROT_PER_M)/(pwm_period*C_to_L_Ratio);
-	}
-	//Estimate current acceleration & velocity
-	currAccel1 = ALPHA*currAccel1 + (1-ALPHA)*1000000*((nextVel-currVel1)/pwm_period);
-	currVel1 = ALPHA*currVel1 + (1-ALPHA)*nextVel;
-	
-	rotations1--;
-	updateInstruction();
-	prev_time1 = prev_time1+pwm_period;
+long readEncoder(int encoder) {
+  // Initialize temporary variables for SPI read
+  unsigned int count_1, count_2, count_3, count_4;
+  long count_value;  
+  
+  // Read encoder 1
+  if (encoder == 1) {
+    digitalWrite(slaveSelectEnc1,LOW);      // Begin SPI conversation
+    SPI.transfer(0x60);                     // Request count
+    count_1 = SPI.transfer(0x00);           // Read highest order byte
+    count_2 = SPI.transfer(0x00);           
+    count_3 = SPI.transfer(0x00);           
+    count_4 = SPI.transfer(0x00);           // Read lowest order byte
+    digitalWrite(slaveSelectEnc1,HIGH);     // Terminate SPI conversation 
+  }
+  
+  // Read encoder 2
+  else if (encoder == 2) {
+    digitalWrite(slaveSelectEnc2,LOW);      // Begin SPI conversation
+    SPI.transfer(0x60);                      // Request count
+    count_1 = SPI.transfer(0x00);           // Read highest order byte
+    count_2 = SPI.transfer(0x00);           
+    count_3 = SPI.transfer(0x00);           
+    count_4 = SPI.transfer(0x00);           // Read lowest order byte
+    digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation 
+  }
+  
+  // Calculate encoder count
+  count_value = (count_1 << 8) + count_2;
+  count_value = (count_value << 8) + count_3;
+  count_value = (count_value << 8) + count_4;
+  
+  return count_value;
 }
-
-void rising2() {
-	int pwm_period = micros()-prev_time2;
-	
-	//If B is low when A rises, B is out of phase with A by 90 degrees to the right and the motor is clockwise
-	//If B is high when A rises, B is out of phase with A by 90 degrees to the left and the motor is counter clockwise
-	cw2 = digitalRead(B_2);
-	//Calculate the equivalent velocity in m/s at the center
-	//(1 rotation / [pwm_period] s)*(1000000us / s)*(1m / [ROT_PER_M] rotation)*(1 m/s / C_to_R_Ratio m/s)
-	if(cw2 == 1) {
-		float nextVel = (1000000/ROT_PER_M)/(pwm_period*C_to_R_Ratio);
-	}
-	else {
-		float nextVel = -(1000000/ROT_PER_M)/(pwm_period*C_to_R_Ratio);
-	}
-	
-	//Estimate current acceleration & velocity
-	currAccel2 = ALPHA*currAccel2 + (1-ALPHA)*1000000*((nextVel-currVel2)/(pwm_period));
-	currVel2 = ALPHA*currVel2 + (1-ALPHA)*nextVel;
-	
-	rotations2--;
-	updateInstruction();
-	prev_time2 = prev_time2+pwm_period;
+void clearEncoderCount() {
+    
+  // Set encoder1's data register to 0
+  digitalWrite(slaveSelectEnc1,LOW);      // Begin SPI conversation  
+  // Write to DTR
+  SPI.transfer(0x98);    
+  // Load data
+  SPI.transfer(0x00);  // Highest order byte
+  SPI.transfer(0x00);           
+  SPI.transfer(0x00);           
+  SPI.transfer(0x00);  // lowest order byte
+  digitalWrite(slaveSelectEnc1,HIGH);     // Terminate SPI conversation 
+  
+  delayMicroseconds(100);  // provides some breathing room between SPI conversations
+  
+  // Set encoder1's current data register to center
+  digitalWrite(slaveSelectEnc1,LOW);      // Begin SPI conversation  
+  SPI.transfer(0xE0);    
+  digitalWrite(slaveSelectEnc1,HIGH);     // Terminate SPI conversation   
+  
+  // Set encoder2's data register to 0
+  digitalWrite(slaveSelectEnc2,LOW);      // Begin SPI conversation  
+  // Write to DTR
+  SPI.transfer(0x98);    
+  // Load data
+  SPI.transfer(0x00);  // Highest order byte
+  SPI.transfer(0x00);           
+  SPI.transfer(0x00);           
+  SPI.transfer(0x00);  // lowest order byte
+  digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation 
+  
+  delayMicroseconds(100);  // provides some breathing room between SPI conversations
+  
+  // Set encoder2's current data register to center
+  digitalWrite(slaveSelectEnc2,LOW);      // Begin SPI conversation  
+  SPI.transfer(0xE0);    
+  digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation 
 }
 
 void stopMoving(byte now) {
@@ -214,15 +306,15 @@ void stopMoving(byte now) {
 void setMax(byte now) {
 	float v = Serial.parseFloat();
 	if(v != 0) {
-		maxVel = v;
+		maxVel = v*1000000;
 	}
 	float a = Serial.parseFloat();
 	if(a != 0) {
-		maxAccel = a;
+		maxAccel = a*1000000;
 	}
 	float ac = Serial.parseFloat();
 	if(a != 0) {
-		maxCentripAccel = ac;
+		maxCentripAccel = ac*1000000;
 	}
 }
 
@@ -327,13 +419,85 @@ void loop() {
 			}
 		}
 	}
-  unsigned long currTime = micros(); 
+  unsigned long currTime = micros();
+
+  //Check the encoders and send the speed to the Pi
+  DataPacket dp;
+  
+  //Every packet begins with 0xEE to let the Pi know when to start listening
+  dp.Address = 0xEE;
+  
+  //Packet number allows more than 1 packet format
+  dp.PacketID = 0x01;
+
+  //Find the number of times the encoder pulsed from the last check to now
+  dp.encoder1Count = readEncoder(1) - encoder1Count;
+  dp.encoder2Count = readEncoder(2) - encoder2Count;
+
+  //Find the microseconds between the last speed check and now
+  dp.deltaTime = currTime - prev_time;
+  
+  //dp.voltage = analogRead(VOLT_METER);
+
+  //Calculate a CRC for error correction
+  dp.CRC = MakeCRC(&dp);
+
+  //Write the packet to the serial line
+  const byte* p = (const byte*) &dp;
+  for(int i = 0; i < sizeof dp; i++) {
+    Serial.write(*p++);
+  }
+  
+  //Setup for next time
+  encoder1Count += dp.encoder1Count;
+  encoder2Count += dp.encoder2Count;
+  prev_time = currTime;
+
+  //Check if any of the encoders are close to overflowing the long by testing the most significant bit
+  if((encoder1Count & 0x40000000L) | (encoder2Count & 0x40000000L)) {
+    //Reset the count to 0 if so
+    clearEncoderCount();
+    encoder1Count = 0;
+    encoder2Count = 0;
+  }
+  //Subtract the number of rotations since the last check
+  rotations1 = constrain(rotations1 - dp.encoder1Count,0,32767);
+  rotations2 = constrain(rotations2 - dp.encoder2Count,0,32767);
+  if(rotations1 <= 0 && rotations2 <= 0) {
+    updateInstruction();
+  }
+    
 	//Not stopped by delay or instruction
-	if(checkTime < currTime || rotations1 != 0 || rotations2 != 0 || (angle != 0 && rotations1 == 0 && rotations2 == 0)) {
+ //Angle = 0 and both rotation counters when we want to stop
+ //If one side is done moving, update often
+ //Otherwise, only check after the specified delay
+	if(checkTime < currTime || rotations1 != 0 || rotations2 != 0 || (angle != 0 && rotations1 != 0 && rotations2 != 0)) {
 		int dpower1 = 0;
 		int dpower2 = 0;
-		//int dDrivePower = 0;
-		//int dTurningPower = 0;
+
+    //Process the speed
+    //TODO: use math to find currVel1 and 2 using real constants
+    //number of rotations = dp.encoder1Count/1024
+    //distance in meters = 62.6594263365*(dp.encoder1Count/1024)
+    //distance in meters = 0.06119084603*dp.encoder1Count
+    //dp.encoder1Count should only reach up to 10000 in one cycle, so normalize it
+    //distance in um = 61190*dp.encoder1Count
+    //speed in m/s = (61190/dp.deltaTime)*dp.encoder1Count
+    //speed in m/s *10^6 = (61190846030/dp.deltaTime)*dp.encoder1Count
+    //time in seconds = dp.deltaTime/1000000
+
+    //Calculate new velocities
+    long newCurrVel1 = (61190846030L/dp.deltaTime)*dp.encoder1Count;
+    long newCurrVel2 = (61190846030L/dp.deltaTime)*dp.encoder2Count;
+    
+    //Calculate acceleration from velocity
+    currAccel1 = 1000000*(newCurrVel1 - currVel1)/dp.deltaTime;
+    currAccel2 = 1000000*(newCurrVel2 - currVel2)/dp.deltaTime;
+
+    //Replace the old velocity values now that they aren't needed
+    currVel1 = newCurrVel1;
+    currVel2 = newCurrVel2;
+    
 		//Angle is off
 		if(abs(currVel1-currVel2) > MAX_V_ERROR) {
 			//Going to the right too much
@@ -346,7 +510,6 @@ void loop() {
 				if(currVel2 < maxVel && abs(currVel2*currVel2/radius) < maxCentripAccel) {
 					dpower2++;
 				}
-				//dTurningPower--;
 			}
 			//Going to the left too much
 			else {
@@ -358,20 +521,17 @@ void loop() {
 				if(currVel1 < maxVel && abs(currVel1*currVel1/radius) < maxCentripAccel) {
 					dpower1++;
 				}
-				//dTurningPower++;
 			}
 		}
-		//left speed is not max and accel is not above threshold
+		//Left speed is not max and accel is not above threshold
 		if(abs(currVel1 - maxVel) > MAX_V_ERROR && abs(currAccel1) < maxAccel) {
 			//left too slow
 			if(currVel1 < maxVel) {
 				dpower1++;
-				//dDrivePower++;
 			}
 			//left too fast
 			else {
 				dpower1--;
-				//dDrivePower--;
 			}
 		}
 		//Right speed is not max and accel is not above threshold
@@ -379,19 +539,15 @@ void loop() {
 			//right too slow
 			if(currVel2 < maxVel) {
 				dpower2++;
-				//dDrivePower++;
 			}
 			//right too fast
 			else {
 				dpower2--;
-				//dDrivePower--;
 			}
 		}
 		//Cap power to range between -127 and 127
 		power1 = constrain(power1+dpower1,-127,127);
 		power2 = constrain(power2+dpower2,-127,127);
-		//turnPower = constrain(turnPower+dTurningPower,-127,127);
-		//drivePower = constrain(drivePower+dDrivePower,-127,127);
 		
 		//Send new command to motor if there is a change
 		if(dpower1 != 0) {
@@ -400,13 +556,6 @@ void loop() {
 		if(dpower2 != 0) {
 			ST.motor(2,power2);
 		}
-		/*if(dTurningPower != 0) {
-			ST.turn(turnPower);
-		}
-		if(dDrivePower != =) {
-			ST.drive(drivePower);
-		}
-		*/
 		
 		//If there is a change, wait for the motor to respond before adjusting again
 		if(dpower1 != 0 || dpower2 != 0) {

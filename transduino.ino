@@ -394,26 +394,22 @@ void loop() {
 			byteRead = Serial.read();
 			byte now = byteRead & 0x0F;
 			switch(byteRead & 0xF0) {
-				case STOP: {
+				case STOP: 
 					//stop
 					stopMoving(now);
-				}
-				break;
-				case SETMAX: {
+				  break;
+				case SETMAX: 
 					//set max v,a,ac
 					setMax(now);
-				}
-				break;
-				case GO: {
+				  break;
+				case GO: 
 					//set max v,a,ac
 					go(now);
-				}
-				break;
-				case CHECKV: {
+				  break;
+				case CHECKV: 
 					//check the battery voltage
 					checkVoltage();
-				}
-				break;
+				  break;
 				default:
 				break;
 			}

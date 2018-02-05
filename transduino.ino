@@ -1,6 +1,7 @@
 #include <Sabertooth.h>
 #include <SPI.h>
 #include <util/crc16.h>
+
 //Setup Sabertooth on address 128
 Sabertooth ST(128);
 
@@ -40,10 +41,10 @@ long currVel1 = 0;
 long currVel2 = 0;
 
 //The last time the encoder's value was checked
-unsigned long prev_time = 0;
+unsigned long prevTime = 0;
 
 //The last time the Pi sent a command
-unsigned long last_command_time = 0;
+unsigned long lastCommandTime = 0;
 
 //Current power of each motor
 int power1 = 0;
@@ -55,7 +56,7 @@ int dpower2 = 0;
 //The next time when the control feedback loop should run
 unsigned long checkTime = 0;
 
-struct DataPacket {
+struct OdomPacket {
   uint8_t Address;
   uint8_t PacketID;
   long encoder1Count;
@@ -203,13 +204,13 @@ void loop() {
           targetVel1 = 0;
           targetVel2 = 0;
           Serial.println("I stopped moving.");
-          last_command_time = currTime;
+          lastCommandTime = currTime;
           break;
         case GO:
           targetVel1 = Serial.parseInt();
           targetVel2 = Serial.parseInt();
-          Serial.println("I received a new command after "+(currTime-last_command_time)+" us.");
-          last_command_time = currTime;
+          Serial.println("I received a new command after "+String(currTime-lastCommandTime)+" us.");
+          lastCommandTime = currTime;
           break;
         default:
           break;
@@ -217,7 +218,7 @@ void loop() {
     }
   }
   
-  if(last_command_time + TIMEOUT > currTime) {
+  if(lastCommandTime + TIMEOUT > currTime) {
     ST.stop();
     targetVel1 = 0;
     targetVel2 = 0;
@@ -225,38 +226,39 @@ void loop() {
   }
 
   //Check the encoders and send the speed to the Pi
-  DataPacket dp;
+  OdomPacket op;
   
   //Every packet begins with 0xEE to let the Pi know when to start listening
-  dp.Address = 0xEE;
+  op.Address = 0xEE;
   
   //Packet number allows more than 1 packet format
-  dp.PacketID = 0x01;
+  op.PacketID = 0x01;
 
   //Find the number of times the encoder pulsed from the last check to now
-  dp.encoder1Count = readEncoder(1) - encoder1Count;
-  dp.encoder2Count = readEncoder(2) - encoder2Count;
+  op.encoder1Count = readEncoder(1) - encoder1Count;
+  op.encoder2Count = readEncoder(2) - encoder2Count;
 
   //Find the microseconds between the last speed check and now
-  dp.deltaTime = currTime - prev_time;
+  op.deltaTime = currTime - prevTime;
 
   //Calculate a CRC for error correction
-  dp.CRC = _crc16_update(dp.CRC, dp.Address);
-  dp.CRC = _crc16_update(dp.CRC, dp.PacketID);
-  dp.CRC = _crc16_update(dp.CRC, dp.encoder1Count);
-  dp.CRC = _crc16_update(dp.CRC, dp.encoder2Count);
-  dp.CRC = _crc16_update(dp.CRC, dp.deltaTime);
+  op.CRC = _crc16_update(op.CRC, op.Address);
+  op.CRC = _crc16_update(op.CRC, op.PacketID);
+  op.CRC = _crc16_update(op.CRC, op.encoder1Count);
+  op.CRC = _crc16_update(op.CRC, op.encoder2Count);
+  op.CRC = _crc16_update(op.CRC, op.deltaTime);
 
   //Write the packet to the serial line
-  const byte* p = (const byte*) &dp;
-  for(int i = 0; i < sizeof dp; i++) {
+  const byte* p = (const byte*) &op;
+  for(int i = 0; i < sizeof op; i++) {
     Serial.write(*p++);
   }
+  Serial.flush();
   
   //Setup for next time
-  encoder1Count += dp.encoder1Count;
-  encoder2Count += dp.encoder2Count;
-  prev_time = currTime;
+  encoder1Count += op.encoder1Count;
+  encoder2Count += op.encoder2Count;
+  prevTime = currTime;
 
   //Check if any of the encoders are close to overflowing the long by testing the most significant bit
   //Shouldn't need this unless running for 1 week straight
@@ -274,8 +276,8 @@ void loop() {
   if(checkTime < currTime && (targetVel1 !=0 || targetVel2 != 0)) {
     
     //Calculate new velocities in um/s
-    currVel1 = (UM_PER_PULSE/dp.deltaTime)*dp.encoder1Count;
-    currVel2 = (UM_PER_PULSE/dp.deltaTime)*dp.encoder2Count;
+    currVel1 = (UM_PER_PULSE/op.deltaTime)*op.encoder1Count;
+    currVel2 = (UM_PER_PULSE/op.deltaTime)*op.encoder2Count;
     
     //Left wheel is too slow
     if(currVel1 < targetVel1 && targetVel1 - currVel1 > MAX_V_ERROR) {

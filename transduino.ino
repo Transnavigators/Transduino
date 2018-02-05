@@ -1,5 +1,6 @@
 #include <Sabertooth.h>
 #include <SPI.h>
+#include <Encoder_Buffer.h>
 #include <util/crc16.h>
 
 //Setup Sabertooth on address 128
@@ -11,8 +12,8 @@ const byte GO = 0x20;
 
 // Slave Select pins for encoders 1 and 2
 // Feel free to reallocate these pins to best suit your circuit
-const int slaveSelectEnc1 = 7;
-const int slaveSelectEnc2 = 8;
+Encoder_Buffer enc1(7);
+Encoder_Buffer enc2(8);
 
 // These hold the current encoder count.
 signed long encoder1Count = 0;
@@ -70,123 +71,15 @@ void setup() {
   ST.setRamping(5);
 
   //Initialize the encoders
-  initEncoders();
-
+  enc1.initEncoder();
+  enc2.initEncoder();
+  
   //Initialize serial port
   //Set the speed to the default Raspberry Pi/LIDAR serial speed
   Serial.begin(115200);
   while (!Serial) {
     ; //Wait for serial port to connect (if USB)
   }
-}
-
-void initEncoders() {
-  
-  // Set slave selects as outputs
-  pinMode(slaveSelectEnc1, OUTPUT);
-  pinMode(slaveSelectEnc2, OUTPUT);
-  
-  // Raise select pins
-  // Communication begins when you drop the individual select signal
-  digitalWrite(slaveSelectEnc1,HIGH);
-  digitalWrite(slaveSelectEnc2,HIGH);
-  
-  SPI.begin();
-  
-  // Initialize encoder 1
-  //    Clock division factor: 0
-  //    Negative index input
-  //    free-running count mode
-  //    x4 quatrature count mode (four counts per quadrature cycle)
-  // NOTE: For more information on commands, see datasheet
-  digitalWrite(slaveSelectEnc1,LOW);        // Begin SPI conversation
-  SPI.transfer(0x88);                       // Write to MDR0
-  SPI.transfer(0x03);                       // Configure to 4 byte mode
-  digitalWrite(slaveSelectEnc1,HIGH);       // Terminate SPI conversation
-
-  // Initialize encoder 2
-  //    Clock division factor: 0
-  //    Negative index input
-  //    free-running count mode
-  //    x4 quatrature count mode (four counts per quadrature cycle)
-  // NOTE: For more information on commands, see datasheet
-  digitalWrite(slaveSelectEnc2,LOW);        // Begin SPI conversation
-  SPI.transfer(0x88);                       // Write to MDR0
-  SPI.transfer(0x03);                       // Configure to 4 byte mode
-  digitalWrite(slaveSelectEnc2,HIGH);       // Terminate SPI conversation
-}
-
-long readEncoder(int encoder) {
-  // Initialize temporary variables for SPI read
-  unsigned int count_1, count_2, count_3, count_4;
-  long count_value;
-  
-  // Read encoder 1
-  if (encoder == 1) {
-    digitalWrite(slaveSelectEnc1,LOW);      // Begin SPI conversation
-    SPI.transfer(0x60);                     // Request count
-    count_1 = SPI.transfer(0x00);           // Read highest order byte
-    count_2 = SPI.transfer(0x00);
-    count_3 = SPI.transfer(0x00);
-    count_4 = SPI.transfer(0x00);           // Read lowest order byte
-    digitalWrite(slaveSelectEnc1,HIGH);     // Terminate SPI conversation
-  }
-  
-  // Read encoder 2
-  else if (encoder == 2) {
-    digitalWrite(slaveSelectEnc2,LOW);      // Begin SPI conversation
-    SPI.transfer(0x60);                      // Request count
-    count_1 = SPI.transfer(0x00);           // Read highest order byte
-    count_2 = SPI.transfer(0x00);
-    count_3 = SPI.transfer(0x00);
-    count_4 = SPI.transfer(0x00);           // Read lowest order byte
-    digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation
-  }
-  
-  // Calculate encoder count
-  count_value = (count_1 << 8) + count_2;
-  count_value = (count_value << 8) + count_3;
-  count_value = (count_value << 8) + count_4;
-  
-  return count_value;
-}
-void clearEncoderCount() {
-  
-  // Set encoder1's data register to 0
-  digitalWrite(slaveSelectEnc1,LOW);      // Begin SPI conversation
-  // Write to DTR
-  SPI.transfer(0x98);
-  // Load data
-  SPI.transfer(0x00);  // Highest order byte
-  SPI.transfer(0x00);
-  SPI.transfer(0x00);
-  SPI.transfer(0x00);  // lowest order byte
-  digitalWrite(slaveSelectEnc1,HIGH);     // Terminate SPI conversation
-  
-  delayMicroseconds(100);  // provides some breathing room between SPI conversations
-  
-  // Set encoder1's current data register to center
-  digitalWrite(slaveSelectEnc1,LOW);      // Begin SPI conversation
-  SPI.transfer(0xE0);
-  digitalWrite(slaveSelectEnc1,HIGH);     // Terminate SPI conversation
-  
-  // Set encoder2's data register to 0
-  digitalWrite(slaveSelectEnc2,LOW);      // Begin SPI conversation
-  // Write to DTR
-  SPI.transfer(0x98);
-  // Load data
-  SPI.transfer(0x00);  // Highest order byte
-  SPI.transfer(0x00);
-  SPI.transfer(0x00);
-  SPI.transfer(0x00);  // lowest order byte
-  digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation
-  
-  delayMicroseconds(100);  // provides some breathing room between SPI conversations
-  
-  // Set encoder2's current data register to center
-  digitalWrite(slaveSelectEnc2,LOW);      // Begin SPI conversation
-  SPI.transfer(0xE0);
-  digitalWrite(slaveSelectEnc2,HIGH);     // Terminate SPI conversation
 }
 
 //This is the main loop which reads serial commands
@@ -235,8 +128,8 @@ void loop() {
   op.PacketID = 0x01;
 
   //Find the number of times the encoder pulsed from the last check to now
-  op.encoder1Count = readEncoder(1) - encoder1Count;
-  op.encoder2Count = readEncoder(2) - encoder2Count;
+  op.encoder1Count = enc1.readEncoder() - encoder1Count;
+  op.encoder2Count = enc2.readEncoder() - encoder2Count;
 
   //Find the microseconds between the last speed check and now
   op.deltaTime = currTime - prevTime;
@@ -264,7 +157,8 @@ void loop() {
   //Shouldn't need this unless running for 1 week straight
   if((encoder1Count & 0x40000000L) | (encoder2Count & 0x40000000L)) {
     //Reset the count to 0 if so
-    clearEncoderCount();
+    enc1.clearEncoderCount();
+    enc2.clearEncoderCount();
     encoder1Count = 0;
     encoder2Count = 0;
   }

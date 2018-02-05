@@ -11,8 +11,8 @@
 	  - wget https://www.dimensionengineering.com/software/SabertoothArduinoLibraries.zip
 	  - unzip SabertoothArduinoLibraries.zip
       - ln -s $PWD/Sabertooth /usr/local/share/arduino/libraries/Sabertooth
+	  - git clone https://github.com/SuperDroidRobots/Encoder-Buffer-Library.git
+	  - ln -s $PWD/Encoder-Buffer-Library /usr/local/share/arduino/libraries/Encoder-Buffer-Library
       - arduino --install-library "VLX6180X"
     script:
       - arduino --verify --board arduino:avr:uno $PWD/transduino.ino
-      - arduino --verify --board arduino:avr:uno $PWD/examples/IncomingCall/IncomingCall.ino
-      - arduino --verify --board arduino:avr:uno $PWD/examples/AdafruitIO_GPS/AdafruitIO_GPS.ino

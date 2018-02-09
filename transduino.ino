@@ -36,7 +36,7 @@ const long TIMEOUT = 2500000;
 const unsigned long ZETA = 100;
 
 //(1e6)*2Pi*(6/2)*0.0254/1024
-const long UM_PER_PULSE = 61190846030L;
+const unsigned long UM_PER_PULSE = 61190846030L;
 
 long currVel1 = 0;
 long currVel2 = 0;
@@ -54,6 +54,8 @@ int power2 = 0;
 int dpower1 = 0;
 int dpower2 = 0;
 
+unsigned long umPerPulseS = 0;
+
 //The next time when the control feedback loop should run
 unsigned long checkTime = 0;
 
@@ -62,7 +64,7 @@ struct OdomPacket {
   uint8_t PacketID;
   long encoder1Count;
   long encoder2Count;
-  long deltaTime;
+  unsigned long deltaTime;
   uint16_t CRC;
 };
 
@@ -90,8 +92,7 @@ void loop() {
     //Wait for Arduino's address
     if(byteRead == 0xEE) {
       byteRead = Serial.read();
-      byte now = byteRead & 0x0F;
-      switch(byteRead & 0xF0) {
+      switch(byteRead) {
         case STOP:
           ST.stop();
           targetVel1 = 0;
@@ -170,8 +171,9 @@ void loop() {
   if(checkTime < currTime && (targetVel1 !=0 || targetVel2 != 0)) {
     
     //Calculate new velocities in um/s
-    currVel1 = (UM_PER_PULSE/op.deltaTime)*op.encoder1Count;
-    currVel2 = (UM_PER_PULSE/op.deltaTime)*op.encoder2Count;
+    umPerPulseS = UM_PER_PULSE/op.deltaTime;
+    currVel1 = umPerPulseS*op.encoder1Count;
+    currVel2 = umPerPulseS*op.encoder2Count;
     
     //Left wheel is too slow
     if(currVel1 < targetVel1 && targetVel1 - currVel1 > MAX_V_ERROR) {

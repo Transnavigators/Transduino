@@ -3,6 +3,8 @@
 #include <Encoder_Buffer.h>
 #include <util/crc16.h>
 
+#define DEBUG 1
+
 //Setup Sabertooth on address 128
 Sabertooth ST(128);
 
@@ -97,13 +99,17 @@ void loop() {
           ST.stop();
           targetVel1 = 0;
           targetVel2 = 0;
-          Serial.println("I stopped moving.");
+          #ifdef DEBUG
+            Serial.println("I stopped moving.");
+          #endif
           lastCommandTime = currTime;
           break;
         case GO:
           targetVel1 = Serial.parseInt();
           targetVel2 = Serial.parseInt();
-          Serial.println("I received a new command after "+String(currTime-lastCommandTime)+" us.");
+          #ifdef DEBUG
+            Serial.println("I received a new command after "+String(currTime-lastCommandTime)+" us.");
+          #endif
           lastCommandTime = currTime;
           break;
         default:
@@ -147,7 +153,6 @@ void loop() {
   for(int i = 0; i < sizeof op; i++) {
     Serial.write(*p++);
   }
-  Serial.flush();
   
   //Setup for next time
   encoder1Count += op.encoder1Count;
@@ -168,7 +173,7 @@ void loop() {
   //Angle = 0 and both rotation counters when we want to stop
   //If one side is done moving, update often
   //Otherwise, only check after the specified delay
-  if(checkTime < currTime && (targetVel1 !=0 || targetVel2 != 0)) {
+  if(checkTime < currTime && (targetVel1 != 0 || targetVel2 != 0)) {
     
     //Calculate new velocities in um/s
     umPerPulseS = UM_PER_PULSE/op.deltaTime;
@@ -209,4 +214,7 @@ void loop() {
       checkTime = micros()+ZETA;
     }
   }
+  #ifdef DEBUG
+    Serial.println("Loop time: "+String(currTime-lastCommandTime)+" us.");
+  #endif
 }

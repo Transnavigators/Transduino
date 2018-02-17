@@ -84,7 +84,7 @@ void setup() {
   
   //Initialize serial port
   //Set the speed to the default Raspberry Pi/LIDAR serial speed
-  Serial.begin(115200);
+  Serial.begin(9600);
   while (!Serial) {
     ; //Wait for serial port to connect (if USB)
   }
@@ -126,7 +126,9 @@ void loop() {
     ST.stop();
     targetVel1 = 0;
     targetVel2 = 0;
-    Serial.println("I stopped moving due to a timeout.");
+    #ifdef DEBUG
+      Serial.println("I stopped moving due to a timeout.");
+    #endif
   }
 
   //Check the encoders and send the speed to the Pi
@@ -155,6 +157,9 @@ void loop() {
   encoder1Count += op.encoder1Count;
   encoder2Count += op.encoder2Count;
   prevTime = currTime;
+  #ifdef DEBUG
+    Serial.println("Encoder1 moved "+String(encoder1Count)+"Encoder 2 moved"+String(encoder2Count));
+  #endif
 
   //Check if any of the encoders are close to overflowing the long by testing the most significant bit
   //Shouldn't need this unless running for 1 week straight

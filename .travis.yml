@@ -18,7 +18,10 @@ install:
   # Install Encoder Buffer library for Dual LS7366R Quadrature Encoder Buffer
   - git clone https://github.com/SuperDroidRobots/Encoder-Buffer-Library.git
   - ln -s $PWD/Encoder-Buffer-Library /usr/local/share/arduino/libraries/Encoder-Buffer-Library
+  # Install a fast CRC library
+  - git clone https://github.com/FrankBoesing/FastCRC.git
+  - ln -s $PWD/FastCRC /usr/local/share/arduino/libraries/FastCRC
   # Install Pololu's VLX6180X library for VL6180X time-of-flight distance sensor
   - arduino --install-library "VL6180X"
 script:
-  - arduino --verify --board arduino:avr:uno $PWD/transduino.ino && arduino --verify --board arduino:avr:uno $PWD/calibrate/calibrate.ino
+  - arduino --verify --board arduino:avr:uno $PWD/transduino/transduino.ino && arduino --verify --board arduino:avr:uno $PWD/calibrate/calibrate.ino

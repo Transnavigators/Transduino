@@ -76,6 +76,9 @@ const uint16_t packetlen = sizeof(OdomPacket)-sizeof(uint16_t);
 
 void setup() {
   //Set the ramping value which decides how fast the motor can change speeds (1-80, low is faster)
+  SabertoothTXPinSerial.begin(9600);
+  ST.autobaud();
+  
   ST.setRamping(5);
 
   //Initialize the encoders

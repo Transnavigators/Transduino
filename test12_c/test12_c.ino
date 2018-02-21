@@ -3,8 +3,7 @@
 
 #define SLAVE_ADDRESS 0x04
 int numBytes = 0;
-int number1 = 0;
-int number2 = 0;
+int readBuffer[4];
 int state = 0;
 
 //Setup Sabertooth on address 128
@@ -31,23 +30,19 @@ void loop() {
 // callback for received data
 void receiveData(int byteCount){
   while(Wire.available()) {
-    if (numBytes == 0) {
-      number1 = Wire.read();
-      Serial.print("data received m1: ");
-      Serial.println(number1);
- 
-    }
-    else if (numBytes == 1) {
-      number2 = Wire.read();
-      Serial.print("data received m2: ");
-      Serial.println(number2);
-      ST.motor(1, number1);
-      ST.motor(2, number2);
-      numBytes = 0;
+    if (byteCount < 4) {
+      readBuffer[byteCount] = Wire.read();
+      Serial.print("data received: ");
+      Serial.println(readBuffer[byteCount]);
+      byteCount++;
+	}
+	else {
+	  byteCount = 0;
+	}
   }
 }
 
 // callback for sending data
 void sendData(){
-  Wire.write(number*number);
+  Wire.write(numBytes);
 }

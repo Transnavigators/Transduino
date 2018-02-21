@@ -5,8 +5,10 @@ Sabertooth ST(128);
 void setup() {
     SabertoothTXPinSerial.begin(9600);
     ST.setBaudRate(115200);
+    ST.setRamping(5);
     SabertoothTXPinSerial.end();
-	ST.setRamping(5);
+    SabertoothTXPinSerial.begin(115200);
+    ST.setRamping(5);
 }
 
 void loop() {

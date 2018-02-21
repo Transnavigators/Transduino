@@ -3,7 +3,7 @@
 #include <Encoder_Buffer.h>
 #include <FastCRC.h>
 
-#define DEBUG 1
+
 
 //Setup Sabertooth on address 128
 Sabertooth ST(128);
@@ -36,7 +36,7 @@ const long TIMEOUT = 250000;
 
 // The time in us before the Arduino should adjust the motor power again
 //TODO: Change this to stabilize the system
-const unsigned long ZETA = 500;
+const unsigned long ZETA = 10000;
 
 //(1e6)*2Pi*(6/2)*0.0254/1024
 const unsigned long UM_PER_PULSE = 467557344L;
@@ -89,9 +89,9 @@ void setup() {
   while (!Serial) {
     ; //Wait for serial port to connect (if USB)
   }
-  ST.autobaud();
+  //ST.autobaud();
   //Set the ramping value which decides how fast the motor can change speeds (1-80, low is faster)
-  ST.setRamping(5);
+  //ST.setRamping(5);
   
   //Every packet begins with 0xEE to let the Pi know when to start listening
   op.Address = 0xEE;

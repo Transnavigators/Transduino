@@ -30,8 +30,8 @@ while True:
     m1 = input("Enter value for motor 1 [-127,127] : ")
     m2 = input("Enter value for motor 2 [-127,127] : ")
 
-	m1 = convertToByte(m1)
-	m2 = convertToByte(m2)
+    m1 = convertToByte(m1)
+    m2 = convertToByte(m2)
 	
     writeNumber(m1,m2)
 	

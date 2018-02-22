@@ -1,25 +1,26 @@
 import smbus
 import time
 
-#initialize the bus
+# initialize the bus
 bus = smbus.SMBus(1)
 
 # Arduino i2c address
 address = 0x04
 
+# commands for sending and receiving it
 move_cmd = ord('m')
 encoder_cmd = ord('e')
 
-def writeNumber(m1,m2):
+# send data to arduino
+def sendSpeedToMotor(m1,m2):
     bus.write_i2c_block_data(address, move_cmd, [m1, m2, 0]);
     
-    return -1
-
-def readNumber():
-    number = bus.read_byte(address)
-    # number = bus.read_byte_data(address, 1)
-    return number
-
+# get data from arduino
+def readEncoders():
+    data = bus.read_i2c_block_data(address, encoder_cmd)
+    return data
+    
+# Covert int to byte
 def convertToByte(byte):
     if byte > 127:
         return (256-byte) * (-1)
@@ -33,12 +34,12 @@ while True:
     m1 = convertToByte(m1)
     m2 = convertToByte(m2)
 	
-    writeNumber(m1,m2)
+    sendSpeedToMotor(m1,m2)
 	
     print "Motor 1: ", m1, "Motor 2: ", m2
 	
     # sleep one second
     time.sleep(1)
 
-    number = readNumber()
-    print "Arduino: Hey RPI, I received a digit ", number
+    data = readEncoders()
+    print "Encoder Data: ", data

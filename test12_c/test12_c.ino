@@ -1,12 +1,13 @@
 #include <Wire.h>
 #include <Sabertooth.h>
+#include <stdint.h>
 
 #define SLAVE_ADDRESS 0x04
 #define BUFFER_SIZE 4
 
 
-int numBytes = 0;
-int readBuffer[BUFFER_SIZE];
+uint8_t numBytes = 0;
+int8_t readBuffer[BUFFER_SIZE];
 
 //Setup Sabertooth on address 128
 Sabertooth ST(128);

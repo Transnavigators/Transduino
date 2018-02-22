@@ -21,10 +21,10 @@ def readNumber():
     return number
 
 def convertToByte(byte):
-	if byte > 127:
-		return (256-byte) * (-1)
-	else:
-		return byte
+    if byte > 127:
+        return (256-byte) * (-1)
+    else:
+        return byte
 	
 while True:
     m1 = input("Enter value for motor 1 [-127,127] : ")

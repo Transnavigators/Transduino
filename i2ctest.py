@@ -14,7 +14,7 @@ encoder_cmd = ord('e')
 
 # send data to arduino
 def sendSpeedToMotor(m1,m2):
-    bus.write_i2c_block_data(address, move_cmd, [m1, m2, 0]);
+    bus.write_i2c_block_data(address, move_cmd, [m1, m2]);
     
 # get data from arduino
 def readEncoders():
@@ -43,7 +43,6 @@ while True:
     time.sleep(1)
 
     receive_data = readEncoders()
-    print(bytearray(receive_data[0:8]));
     e1,e2 = struct.unpack('ii',bytearray(receive_data[0:8]))
     
     print "Encoder Data: ", e1, e2

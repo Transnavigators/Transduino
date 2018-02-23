@@ -12,7 +12,7 @@
 #define ENCODER1_SELECT_PIN 7
 #define ENCODER2_SELECT_PIN 8
 
-#define DEBUG
+//#define DEBUG
 
 // struct to send both encoder counts over SPI
 typedef struct EncoderDataTag {
@@ -20,7 +20,7 @@ typedef struct EncoderDataTag {
     signed long encoder2Count;
 } EncoderData;
 
-
+jjj
 // Buffer for reading motor control commands
 int8_t ReadBuffer[BUFFER_SIZE];
 
@@ -81,7 +81,7 @@ void receiveData(int byteCount){
         ReadBuffer[NumBytes] = Wire.read();
         
         #ifdef DEBUG
-        Serial.print(ReadBuffer[i]);
+        Serial.print(ReadBuffer[NumBytes]);
         #endif
         
         NumBytes++;
@@ -93,7 +93,7 @@ void receiveData(int byteCount){
           ST.motor(1,ReadBuffer[2]);
           
           #ifdef DEBUG
-          Serial.println()
+          Serial.println();
           Serial.print("Moving: L ");
           Serial.print(ReadBuffer[1]);
           Serial.print("| R ");
@@ -109,5 +109,5 @@ void receiveData(int byteCount){
 
 // send encoder data
 void sendData(){
-  Wire.write(Data,sizeof(EncoderData));
+  Wire.write((byte*)(&data),sizeof(EncoderData));
 }

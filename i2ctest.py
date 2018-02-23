@@ -43,7 +43,7 @@ while True:
     time.sleep(1)
 
     receive_data = readEncoders()
-    print(bytes(receive_data[0:8]));
-    e1,e2 = struct.unpack('ii',bytes(receive_data[0:8]))
+    print(bytearray(receive_data[0:8]));
+    e1,e2 = struct.unpack('ii',bytearray(receive_data[0:8]))
     
     print "Encoder Data: ", e1, e2

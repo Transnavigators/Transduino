@@ -18,19 +18,21 @@
 typedef struct EncoderDataTag {
     signed long encoder1Count;
     signed long encoder2Count;
-} EncoderData
+} EncoderData;
 
 
 // Buffer for reading motor control commands
 int8_t ReadBuffer[BUFFER_SIZE];
 
+uint8_t NumBytes = 0;
+
 // Holds current counts for the encoder
-EncoderData Data;
+EncoderData data;
 
 // initialize sabertooth and encoders
 Sabertooth ST(SABERTOOTH_ADDRESS);
-EncoderBuffer Encoder1(ENCODER1_SELECT_PIN);
-EncoderBuffer Encoder2(ENCODER2_SELECT_PIN);
+Encoder_Buffer Encoder1(ENCODER1_SELECT_PIN);
+Encoder_Buffer Encoder2(ENCODER2_SELECT_PIN);
 
 void setup() {
   
@@ -51,9 +53,9 @@ void setup() {
   Wire.onRequest(sendData);
   
   
-  #IFDEF DEBUG
+  #ifdef DEBUG
   Serial.println("Ready!");
-  #ENDIF
+  #endif
 }
 
 void loop() {
@@ -66,21 +68,21 @@ void loop() {
 
 // receive motor commands
 void receiveData(int byteCount){
-  #IFDEF DEBUG
+  #ifdef DEBUG
   Serial.print("Received ");
   Serial.print(byteCount);
   Serial.println(" bytes");
   
   Serial.print("Data received: ");
-  #ENDIF
+  #endif
   
     while(Wire.available()) {
       if (NumBytes < BUFFER_SIZE) {
         ReadBuffer[NumBytes] = Wire.read();
         
-        #IFDEF DEBUG
+        #ifdef DEBUG
         Serial.print(ReadBuffer[i]);
-        #ENDIF
+        #endif
         
         NumBytes++;
       }
@@ -90,13 +92,13 @@ void receiveData(int byteCount){
           ST.motor(0,ReadBuffer[1]);
           ST.motor(1,ReadBuffer[2]);
           
-          #IFDEF DEBUG
+          #ifdef DEBUG
           Serial.println()
           Serial.print("Moving: L ");
           Serial.print(ReadBuffer[1]);
           Serial.print("| R ");
           Serial.println(ReadBuffer[2]);
-          #ENDIF
+          #endif
         }   
       NumBytes = 0;
     }

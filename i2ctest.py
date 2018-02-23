@@ -1,5 +1,6 @@
 import smbus
 import time
+import struct
 
 # initialize the bus
 bus = smbus.SMBus(1)
@@ -41,5 +42,8 @@ while True:
     # sleep one second
     time.sleep(1)
 
-    data = readEncoders()
-    print "Encoder Data: ", data
+    receive_data = readEncoders()
+    print(bytes(receive_data[0:8]));
+    e1,e2 = struct.unpack('ii',bytes(receive_data[0:8]))
+    
+    print "Encoder Data: ", e1, e2

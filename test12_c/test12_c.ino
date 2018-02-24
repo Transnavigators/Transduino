@@ -109,7 +109,6 @@ void receiveData(int byteCount){
   
     NumBytes = 0; 
     while(Wire.available()) {
-<<<<<<< HEAD
       if (NumBytes == 0) {
         Wire.read();
       }
@@ -123,32 +122,6 @@ void receiveData(int byteCount){
         Wire.read();
       }
       NumBytes++;
-=======
-      if (NumBytes < BUFFER_SIZE) {
-        ReadBuffer[NumBytes] = Wire.read();
-        
-        #ifdef DEBUG
-        Serial.print(ReadBuffer[NumBytes]);
-        #endif
-        
-        NumBytes++;
-      }
-      else {
-        if (ReadBuffer[0] == 'm') {
-            
-          ST.motor(0,ReadBuffer[1]);
-          ST.motor(1,ReadBuffer[2]);
-          
-          #ifdef DEBUG
-          Serial.println();
-          Serial.print("Moving: L ");
-          Serial.print(ReadBuffer[1]);
-          Serial.print("| R ");
-          Serial.println(ReadBuffer[2]);
-          #endif
-        }   
-      NumBytes = 0;
->>>>>>> 4a1247b7702a242d1e5ff6575f6ef7dc5c38634c
     }
 }
 //        ReadBuffer[NumBytes] = Wire.read();
@@ -183,9 +156,5 @@ void receiveData(int byteCount){
 
 // send encoder data
 void sendData(){
-  Wire.write((byte*)(&data),sizeof(EncoderData));
-<<<<<<< HEAD
+Wire.write((byte*)(&data),sizeof(EncoderData));
 }
-=======
-}
->>>>>>> 4a1247b7702a242d1e5ff6575f6ef7dc5c38634c

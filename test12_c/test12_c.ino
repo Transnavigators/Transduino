@@ -1,3 +1,4 @@
+
 #include <Wire.h>
 #include <SPI.h>
 #include <Sabertooth.h>
@@ -21,7 +22,7 @@ typedef struct EncoderDataTag {
     signed long encoder2Count;
 } EncoderData;
 
-jjj
+
 // Buffer for reading motor control commands
 int8_t ReadBuffer[BUFFER_SIZE];
 

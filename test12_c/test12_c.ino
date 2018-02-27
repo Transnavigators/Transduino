@@ -80,7 +80,6 @@ void loop() {
     #endif
     
     ST.motor(1,Motor1Power);
-    delay(20); 
     ST.motor(2,Motor2Power);
     
     delay(500);

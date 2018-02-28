@@ -14,7 +14,9 @@
 #define ENCODER2_SELECT_PIN 8
 #define SW_SERIAL_PORT 2
 
-//#define DEBUG
+#define TIMEOUT 10000
+
+#define DEBUG
 
 // struct to send both encoder counts over SPI
 typedef struct EncoderDataTag {
@@ -30,6 +32,8 @@ uint8_t NumBytes = 0;
 int8_t Motor1Power = 0;
 int8_t Motor2Power = 0;
 
+long lastCommand = 0;
+boolean newCommand = false;
 // Holds current counts for the encoder
 EncoderData data;
 
@@ -77,11 +81,22 @@ void loop() {
     // Read Encoders
     data.encoder1Count = Encoder1.readEncoder();
     data.encoder2Count = Encoder2.readEncoder();
-
-    
-    ST.motor(1,Motor1Power);
-    ST.motor(2,Motor2Power);
-    
+    //Timeout after 1ms
+    if(!newCommand && (micros() > lastCommand+TIMEOUT)) {
+      ST.stop();
+    }
+    else {
+      newCommand = false;
+      if(Motor1Power == 0 && Motor2Power == 0) {
+        ST.stop();
+      }
+      if(Motor1Power != 0) {
+        ST.motor(1,Motor1Power);
+      }
+      if(Motor2Power != 0) {
+        ST.motor(2,Motor2Power);
+      }
+    }
 }
 
 // receive motor commands
@@ -115,6 +130,8 @@ void receiveData(int byteCount){
     }
     NumBytes++;
   }
+  lastCommand = micros();
+  newCommand = true;
   #ifdef DEBUG
   if (NumBytes==3) {
     Serial.print("Motor 1 Power: ");

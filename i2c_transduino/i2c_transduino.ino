@@ -6,7 +6,8 @@
 #include <stdint.h>
 
 #define SLAVE_ADDRESS 0x04
-#define BUFFER_SIZE 4
+#define MOTOR_COMMAND_SIZE 3
+#define MOTOR_COMMAND 'm'
 #define BAUD_RATE 115200
 
 #define SABERTOOTH_ADDRESS 128
@@ -14,18 +15,13 @@
 #define ENCODER2_SELECT_PIN 8
 #define SW_SERIAL_PORT 2
 
-//#define DEBUG
+#define DEBUG
 
 // struct to send both encoder counts over SPI
 typedef struct EncoderDataTag {
     signed long encoder1Count;
     signed long encoder2Count;
 } EncoderData;
-
-// Buffer for reading motor control commands
-int8_t ReadBuffer[BUFFER_SIZE];
-
-uint8_t NumBytes = 0;
 
 int8_t Motor1Power = 0;
 int8_t Motor2Power = 0;
@@ -78,6 +74,14 @@ void loop() {
     data.encoder1Count = Encoder1.readEncoder();
     data.encoder2Count = Encoder2.readEncoder();
 
+  #ifdef DEBUG2
+  if (Motor1Power != 0 && Motor2Power != 0) {
+    Serial.print("Sending: ");
+    Serial.print(Motor1Power);
+    Serial.print(" | ");
+    Serial.println(Motor2Power);
+  }
+  #endif
     
     ST.motor(1,Motor1Power);
     ST.motor(2,Motor2Power);
@@ -86,37 +90,31 @@ void loop() {
 
 // receive motor commands
 void receiveData(int byteCount){
-  #ifdef DEBUG
+  #ifdef DEBUG2
   Serial.print("Received ");
   Serial.print(byteCount);
   Serial.println(" bytes");
   #endif
-
   
-  
-  NumBytes = 0; 
+  int8_t readBuffer[MOTOR_COMMAND_SIZE];
+  int i = 0;
   while(Wire.available()) {
-    switch (NumBytes) {
-      case 0: {
-        Wire.read();
-        break;
-      }
-      case 1: {
-        Motor1Power = Wire.read();
-        break;
-      }
-      case 2: {
-        Motor2Power = Wire.read();
-        break;
-      }
-      default: {
-        Wire.read();
-      }
+    if (byteCount == MOTOR_COMMAND_SIZE) {
+      readBuffer[i++] = Wire.read();
     }
-    NumBytes++;
+    else {
+      Wire.read();
+    }
+  }
+  if (i == MOTOR_COMMAND_SIZE && readBuffer[0] == MOTOR_COMMAND) {
+    Motor1Power = readBuffer[1];
+    Motor2Power = readBuffer[2];
   }
   #ifdef DEBUG
-  if (NumBytes==3) {
+  if (Motor1Power != 0 && Motor2Power != 0) {
+    Serial.print("Received ");
+    Serial.print(byteCount);
+    Serial.println(" bytes");
     Serial.print("Motor 1 Power: ");
     Serial.println(Motor1Power);
     Serial.print("Motor 2 Power: ");

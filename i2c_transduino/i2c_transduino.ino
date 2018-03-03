@@ -6,8 +6,6 @@
 #include <stdint.h>
 
 #define SLAVE_ADDRESS 0x04
-#define MOTOR_COMMAND_SIZE 3
-#define MOTOR_COMMAND 'm'
 #define BAUD_RATE 115200
 
 #define SABERTOOTH_ADDRESS 128
@@ -15,6 +13,18 @@
 #define ENCODER2_SELECT_PIN 8
 #define SW_SERIAL_PORT 2
 
+
+#define MOTOR_COMMAND_SIZE 3
+#define MOTOR_COMMAND 'm'
+#define MOTOR_TIMEOUT 1000
+
+/**
+ * Defining DEBUG switches to using software serial
+ * for communication with the Sabertooth Motor Controller
+ * 
+ * Connect S1 of the Sabertooth to Pin SW_SERIAL_PORT in debug mode
+ * Connect S1 of the Sabertooth to Pin 1 when not in debug mode
+ */
 #define DEBUG
 
 // struct to send both encoder counts over SPI
@@ -23,35 +33,44 @@ typedef struct EncoderDataTag {
     signed long encoder2Count;
 } EncoderData;
 
+// Power of Motor1 and Motor2
 int8_t Motor1Power = 0;
 int8_t Motor2Power = 0;
 
-long lastCommand = 0;
-boolean newCommand = false;
+// The last time we received a messge from the arduino
+// used to timeout the arduino after MOTOR_TIMEOUT milliseconds
+long LastPiCommandTime= 0;
+
+
 // Holds current counts for the encoder
 EncoderData data;
 
-// initialize sabertooth and encoders
-
+// initialize sabertooth
 #ifndef DEBUG
 Sabertooth ST(SABERTOOTH_ADDRESS);
 #endif
 #ifdef DEBUG
-SoftwareSerial SWSerial(NOT_A_PIN, SW_SERIAL_PORT); // RX on no pin (unused), TX on pin 11 (to S1).
-Sabertooth ST(SABERTOOTH_ADDRESS, SWSerial); // Address 128, and use SWSerial as the serial port.
+SoftwareSerial SWSerial(NOT_A_PIN, SW_SERIAL_PORT);
+Sabertooth ST(SABERTOOTH_ADDRESS, SWSerial);
 #endif
 
+// initialize the encoders
 Encoder_Buffer Encoder1(ENCODER1_SELECT_PIN);
 Encoder_Buffer Encoder2(ENCODER2_SELECT_PIN);
 
+
+/**
+ * Setup routine
+ */
 void setup() {
   
   // start Serial
   #ifdef DEBUG
   SWSerial.begin(BAUD_RATE);
   #endif
-  
   Serial.begin(BAUD_RATE);
+  
+  // start SPI
   SPI.begin();
   
   // Initialize encoders
@@ -65,13 +84,22 @@ void setup() {
   Wire.onReceive(receiveData);
   Wire.onRequest(sendData);
   
-  
   #ifdef DEBUG
   Serial.println("Ready!");
   #endif
 }
 
+/**
+ * Main loop
+ */
 void loop() {
+  // Timeout if we haven't received a command int TIMEOUT millisecounds
+  if (millis() - LastPiCommandTime >= TIMEOUT) {
+      Motor1Power = 0;
+      Motor2Power = 0;
+  }
+  
+  
   // Read Encoders
   data.encoder1Count = Encoder1.readEncoder();
   data.encoder2Count = Encoder2.readEncoder();
@@ -84,36 +112,44 @@ void loop() {
     Serial.println(Motor2Power);
   }
   #endif
-    
-    ST.motor(1,Motor1Power);
-    ST.motor(2,Motor2Power);
+  
+  // Send powers to motors
+  ST.motor(1,Motor1Power);
+  ST.motor(2,Motor2Power);
     
 }
 
-// receive motor commands
+/**
+ * Callback for receiving i2c data
+ */
 void receiveData(int byteCount){
-  #ifdef DEBUG2
-  Serial.print("Received ");
-  Serial.print(byteCount);
-  Serial.println(" bytes");
-  #endif
   
+  // Buffer to hold the commands read from the motor
   int8_t readBuffer[MOTOR_COMMAND_SIZE];
-  int i = 0;
+  uint8_t i = 0;
+  
   while(Wire.available()) {
+    // Makes sure we aren't getting junk from the i2c line 
     if (byteCount == MOTOR_COMMAND_SIZE) {
+      // save the data into the buffer
       readBuffer[i++] = Wire.read();
     }
     else {
+      // clear our buffer
       Wire.read();
     }
   }
+  
+  // make sure that we read the correct number of bytes and that we have a move command
+  // and update motor powers
   if (i == MOTOR_COMMAND_SIZE && readBuffer[0] == MOTOR_COMMAND) {
     Motor1Power = readBuffer[1];
     Motor2Power = readBuffer[2];
+  
+    // update the time we last received a message
+    LastPiCommandTime = millis();
   }
-  lastCommand = micros();
-  newCommand = true;
+  
   #ifdef DEBUG
   if (Motor1Power != 0 && Motor2Power != 0) {
     Serial.print("Received ");
@@ -128,9 +164,12 @@ void receiveData(int byteCount){
 }
 
 
-// send encoder data
+/**
+ * Callback for i2c data request
+ */
 void sendData(){
   Wire.write((byte*)(&data),sizeof(EncoderData));
+  
   #ifdef DEBUG
   Serial.print("Encoder 1 Count: ");
   Serial.println(data.encoder1Count);

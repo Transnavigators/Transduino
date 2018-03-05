@@ -5,4 +5,4 @@
 ### Library Installation
 
 Copy files from /library into your arduino library (~\Documents\Arduino)
-* Note: Library sources [Saberooth Library](https://www.dimensionengineering.com/software/SabertoothArduinoLibraries.zip) and [Encoder Buffer Library](https://github.com/SuperDroidRobots/Encoder-Buffer-Library.git
+* Note: Library sources [Saberooth Library](https://www.dimensionengineering.com/software/SabertoothArduinoLibraries.zip) and [Encoder Buffer Library](https://github.com/SuperDroidRobots/Encoder-Buffer-Library.git)

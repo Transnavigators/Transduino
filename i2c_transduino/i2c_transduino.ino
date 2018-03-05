@@ -94,7 +94,7 @@ void setup() {
  */
 void loop() {
   // Timeout if we haven't received a command int TIMEOUT millisecounds
-  if (millis() - LastPiCommandTime >= TIMEOUT) {
+  if (millis() - LastPiCommandTime >= MOTOR_TIMEOUT) {
       Motor1Power = 0;
       Motor2Power = 0;
   }

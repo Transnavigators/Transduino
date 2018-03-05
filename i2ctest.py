@@ -37,7 +37,7 @@ while True:
 	
     sendSpeedToMotor(m1,m2)
 	
-    print "Motor 1: ", m1, "Motor 2: ", m2
+    print("Motor 1: ", m1, "Motor 2: ", m2)
 	
     # sleep one second
     time.sleep(1)
@@ -45,4 +45,4 @@ while True:
     receive_data = readEncoders()
     e1,e2 = struct.unpack('ii',bytearray(receive_data[0:8]))
     
-    print "Encoder Data: ", e1, e2
+    print("Encoder Data: ", e1, e2)

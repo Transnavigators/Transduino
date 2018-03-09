@@ -16,7 +16,7 @@
 
 #define MOTOR_COMMAND_SIZE 3
 #define MOTOR_COMMAND 'm'
-#define MOTOR_TIMEOUT 1000
+#define MOTOR_TIMEOUT 500
 
 /**
  * Defining DEBUG switches to using software serial

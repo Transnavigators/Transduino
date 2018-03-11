@@ -79,6 +79,6 @@ The power sent to each motor is calculated using feedback from the encoders.  Th
 
 The following are known potential issues with the code.  Problems arising from these issues may cause minor glitching but should not cause any major affects on the overall system.
 
-* Issue: Encoder counts can wrap after ~87 minutes.  Solution: The Raspberry Pi should account for this.
-* micros() will wrap ~72 minutes which may result in a near zero current speed.  Solution: Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
-* Problem: Slow float operations.  Solution: If the code is too slow, we can replace all floating point operations with fixed point ones.
+* **Issue:** Encoder counts can wrap after ~87 minutes.  **Resolution:** The Raspberry Pi should account for this.
+* **Issue:** micros() will wrap ~72 minutes which may result in a near zero current speed.  **Resolution:** Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
+* **Issue:** Slow float operations.  **Resolution:** If the code is too slow, we can replace all floating point operations with fixed point ones.

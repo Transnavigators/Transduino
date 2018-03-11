@@ -5,8 +5,8 @@
  *
  * Input and output is over I2C
  *
- * Interface over SPI with a Dual LS7366R Quadrature Encoder Buffer
- * Interface over UART with a Sabertooth 2x60
+ * Interfaces over SPI with a Dual LS7366R Quadrature Encoder Buffer
+ * Interfaces over UART with a Sabertooth 2x60
  * 
  *
  * @author Transnavigators

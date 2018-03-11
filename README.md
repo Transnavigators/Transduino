@@ -6,7 +6,7 @@ Transduino is Arduino code written for the Transnavigators' Voice Controlled Whe
 
 ## Arduino Setup and Configuration
 
-## Required Hardware
+### Required Hardware
 
 * [Arduino Uno](https://store.arduino.cc/usa/arduino-uno-rev3)
 * [Sabertooth 2x60](https://www.dimensionengineering.com/products/sabertooth2x60)
@@ -63,7 +63,7 @@ For more information, consult the [Sabertooth 2x60 User Guide](https://www.dimen
 
 ## Encoder Interface (SPI)
 
-The Arduino communicates with the Quadrature Encoder Buffer over SPI.  The buffer chip is used to count the pulses for each encoder because the [1024 P/R encoders](https://www.sparkfun.com/products/11102) send out pulses faster than the Arduino can count.  The Encoder Buffer chip counts the number of pulses for each encoder.
+The Arduino communicates with the Quadrature Encoder Buffer over SPI.  The buffer chip is used to count pulses for each encoder because the [1024 P/R encoders](https://www.sparkfun.com/products/11102) send out pulses faster than the Arduino can count.
 
 The select pin for Encoder 1 is 7 (`ENCODER1_SELECT_PIN`) and the select pin for encoder 2 is pin 8 (`ENCODER2_SELECT_PIN`).
 
@@ -73,12 +73,12 @@ The select pin for Encoder 1 is 7 (`ENCODER1_SELECT_PIN`) and the select pin for
 
 ## Speed Control
 
-The power sent to each motor is calculated using feedback from the encoders.  The current speeds of each wheel are calculated every iteration of the main loop, and the powers of the each motor is adjusted accordingly by one level in the corresponding direction.  By using constant power changes, any glitches will not cause large fluctuations in the current speed of the chair.
+The power sent to each motor is calculated using feedback from the encoders.  The current speeds of each wheel are calculated every iteration of the main loop, and the powers of the each motor is adjusted accordingly by one level in the corresponding direction.  By using constant power changes, any errors caused by bad data or other glitching will have only a momentary effect on the system and not cause large fluctuations in the current speed of the chair.
 
 ### Limitations:
 
-T
+The following are known potential issues with the code.  Problems arising from these issues may cause minor glitching but should not cause any major affects on the overall system.
 
-* Encoder counts can wrap after ~87 minutes
-* micros will wrap ~72 minutes
-* Slow float operations
+* Issue: Encoder counts can wrap after ~87 minutes.  Solution: The Raspberry Pi should account for this.
+* micros() will wrap ~72 minutes which may result in a near zero current speed.  Solution: Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
+* Problem: Slow float operations.  Solution: If the code is too slow, we can replace all floating point operations with fixed point ones.

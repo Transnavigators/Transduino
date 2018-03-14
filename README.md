@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/Transnavigators/Transduino.svg?branch=master)](https://travis-ci.org/Transnavigators/Transduino)
-[![Documentation Status](https://readthedocs.org/projects/transduino/badge/?version=latest)](http://transduino.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/transduino/badge/?version=master)](http://transduino.readthedocs.io/en/latest/?badge=master)
 # Transduino
 
 Transduino is Arduino code written for the Transnavigators' Voice Controlled Wheelchair.  It supports communication with a Raspberry Pi over I2C, with the Raspberry Pi configured as the master and the Arduino as the slave.  Over the interface, the Arduino accepts requests for setting the desired speeds of each motor and requests for getting the current counts of each encoder.  The Arduino interfaces with a [Sabertooth 2x60](https://www.dimensionengineering.com/products/sabertooth2x60) motor controller and a [Dual LS7366R Quadrature Encoder Buffer](https://www.superdroidrobots.com/shop/item.aspx/dual-ls7366r-quadrature-encoder-buffer/1523/).

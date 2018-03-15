@@ -1,0 +1,13 @@
+*.ino eol=lf
+*.yml eol=lf
+*.py eol=lf
+*.md eol=lf
+*.cpp eol=lf
+*.h eol=lf
+*.rst eol=lf
+*.bat eol=crlf
+*.exe binary
+.gitignore eol=lf
+.gitattributes eol=lf
+LICENSE eol=lf
+Makefile eol=lf

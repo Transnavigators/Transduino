@@ -4,8 +4,6 @@
 
   Interfaces over UART with a <a href="https://www.dimensionengineering.com/products/sabertooth2x60">Sabertooth 2x60</a> on pin 1.
 
-  \mainpage SetBaud
-
 */
 #include <Sabertooth.h>
 

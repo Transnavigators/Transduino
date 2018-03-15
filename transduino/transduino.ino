@@ -101,7 +101,7 @@ int8_t Motor1Power = 0;
 //! The current power of the right motor
 int8_t Motor2Power = 0;
 
-/*! \var LastPiCommandTime
+/*! \var uint32_t LastPiCommandTime
     \brief The last time we received a message from the Arduino
     used to timeout the arduino after MOVE_TIMEOUT microseconds
  */
@@ -110,7 +110,7 @@ uint32_t LastPiCommandTime = 0;
 //! The timestamp of the last iteration of the loop
 uint32_t PreviousLoopTime = 0;
 
-/*! \var data
+/*! \var EncoderData data
     \brief Holds current counts for the encoder
  */
 EncoderData data;

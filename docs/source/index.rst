@@ -1,15 +1,6 @@
 Intro to Transduino
 ###################
 
-.. currentmodule:: index
-
-.. toctree::
-    :maxdepth: 2
-    
-    index
-    transduino
-    setbaud
-
 Transduino is Arduino code written for the Transnavigators' Voice Controlled Wheelchair.  It supports communication with a Raspberry Pi over I2C, with the Raspberry Pi configured as the master and the Arduino as the slave.  Over the interface, the Arduino accepts requests for setting the desired speeds of each motor and requests for getting the current counts of each encoder.  The Arduino interfaces with a `Sabertooth 2x60 <https://www.dimensionengineering.com/products/sabertooth2x60>`_ motor controller and a `Dual LS7366R Quadrature Encoder Buffer <https://www.superdroidrobots.com/shop/item.aspx/dual-ls7366r-quadrature-encoder-buffer/1523/>`_.
 
 Arduino Setup and Configuration
@@ -102,3 +93,17 @@ The following are known potential issues with the code.  Problems arising from t
 * **Issue:** Encoder counts can wrap after ~87 minutes.  **Resolution:** The Raspberry Pi should account for this.
 * **Issue:** micros() will wrap ~72 minutes which may result in a near zero current speed.  **Resolution:** Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
 * **Issue:** Slow float operations.  **Resolution:** If the code is too slow, we can replace all floating point operations with fixed point ones.
+
+.. toctree::
+   :maxdepth: 3
+   :hidden:
+   
+   self
+   
+.. toctree::
+   :maxdepth: 3
+   :hidden:
+   :caption: API Documentation
+   
+   transduino
+   setbaud

@@ -58,11 +58,9 @@ project_list = ["transduino", "setbaud"]
 for proj in project_list:
      shutil.copyfile(os.path.abspath('../../%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
 
-
-
 breathe_default_project = "transduino"
-#breathe_domain_by_extension = {"ino": "c",}
 
+#breathe_domain_by_extension = {"ino": "c",}
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['ntemplates']
 
@@ -103,6 +101,9 @@ html_theme = 'sphinx_rtd_theme'
 # documentation.
 #
 # html_theme_options = {}
+html_theme_options = {
+    "collapse_navigation" : False
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -118,6 +119,7 @@ html_theme = 'sphinx_rtd_theme'
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
+#html_sidebars = { '**': ['globaltoc.html', 'relations.html', 'sourcelink.html', 'searchbox.html'], }
 
 
 # -- Options for HTMLHelp output ---------------------------------------------

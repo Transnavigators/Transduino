@@ -18,6 +18,15 @@ import os
 import subprocess
 
 import shutil
+
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+    html_theme = 'default'
+else:
+    import sphinx_rtd_theme
+    html_theme = "sphinx_rtd_theme"
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+
 subprocess.call('cd .. && doxygen Doxyfile', shell=True)
 
 # -- Project information -----------------------------------------------------
@@ -47,7 +56,6 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.imgmath',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
     'breathe',
 ]
 
@@ -55,10 +63,10 @@ breathe_projects = { 'transduino': '../build/xml/' }
 breathe_projects_source = {'transduino': ('', ['transduino.ino', 'setbaud.ino', 'calibrate.ino', 'i2c_fb_transduino.ino', 'i2c_transduino.ino', 'testi2c.ino'])}
 
 project_list = ['transduino', 'setbaud', 'calibrate', 'i2c_fb_transduino', 'i2c_transduino', 'testi2c']
-for proj in project_list:
-     shutil.copyfile(os.path.abspath('../../src/%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
+#for proj in project_list:
+#     shutil.copyfile(os.path.abspath('../../src/%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
 
-breathe_default_project = "transduino"
+#breathe_default_project = "transduino"
 
 #breathe_domain_by_extension = {"ino": "c",}
 # Add any paths that contain templates here, relative to this directory.

@@ -15,18 +15,21 @@
 import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
+#import shutil
+
 import subprocess
+import importlib
 
-import shutil
+# Install and import breathe
+try:
+    importlib.import_module('breathe')
+except ImportError:
+    import pip
+    pip.main(['install', 'breathe'])
+finally:
+    globals()['breathe'] = importlib.import_module('breathe')
 
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    html_theme = 'default'
-else:
-    import sphinx_rtd_theme
-    html_theme = "sphinx_rtd_theme"
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-
+# Generate xml files for docstrings
 subprocess.call('cd .. && doxygen Doxyfile', shell=True)
 
 # -- Project information -----------------------------------------------------

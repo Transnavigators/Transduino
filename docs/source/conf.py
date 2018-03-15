@@ -15,22 +15,29 @@
 import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-#import shutil
-
+import shutil
 import subprocess
-import importlib
 
-# Install and import breathe
-try:
-    importlib.import_module('breathe')
-except ImportError:
-    import pip
-    pip.main(['install', 'breathe'])
-finally:
-    globals()['breathe'] = importlib.import_module('breathe')
+# Create build directory so Doxygen doesn't fail
+xml_build_dir = os.path.abspath('../build/xml/')
+if not os.path.exists(xml_build_dir):
+    os.makedirs(xml_build_dir)
 
 # Generate xml files for docstrings
 subprocess.call('cd .. && doxygen Doxyfile', shell=True)
+#subprocess.call('pip install breathe', shell=True)
+
+# Install and import breathe
+#import importlib
+import breathe
+#try:
+#    importlib.import_module('breathe')
+#except ImportError:
+#    import pip
+#    pip.main(['install', 'breathe'])
+#finally:
+#    globals()['breathe'] = importlib.import_module('breathe')
+
 
 # -- Project information -----------------------------------------------------
 
@@ -66,8 +73,8 @@ breathe_projects = { 'transduino': '../build/xml/' }
 breathe_projects_source = {'transduino': ('', ['transduino.ino', 'setbaud.ino', 'calibrate.ino', 'i2c_fb_transduino.ino', 'i2c_transduino.ino', 'testi2c.ino'])}
 
 project_list = ['transduino', 'setbaud', 'calibrate', 'i2c_fb_transduino', 'i2c_transduino', 'testi2c']
-#for proj in project_list:
-#     shutil.copyfile(os.path.abspath('../../src/%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
+for proj in project_list:
+     shutil.copyfile(os.path.abspath('../../src/%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
 
 #breathe_default_project = "transduino"
 

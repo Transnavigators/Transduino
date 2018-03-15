@@ -103,11 +103,7 @@ The following are known potential issues with the code.  Problems arising from t
 .. toctree::
    :maxdepth: 3
    :hidden:
-   :caption: Modules:
+   :caption: API Documentation
    
-   calibrate
-   i2c_fb_transduino
-   i2c_transduino
-   setbaud
-   testi2c
    transduino
+   setbaud

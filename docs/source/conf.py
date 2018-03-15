@@ -52,11 +52,11 @@ extensions = [
 ]
 
 breathe_projects = { 'transduino': '../build/xml/' }
-breathe_projects_source = {'transduino': ("", ["transduino.ino", "setbaud.ino"])}
+breathe_projects_source = {'transduino': ('', ['transduino.ino', 'setbaud.ino', 'calibrate.ino', 'i2c_fb_transduino.ino', 'i2c_transduino.ino', 'testi2c.ino'])}
 
-project_list = ["transduino", "setbaud"]
+project_list = ['transduino', 'setbaud', 'calibrate', 'i2c_fb_transduino', 'i2c_transduino', 'testi2c']
 for proj in project_list:
-     shutil.copyfile(os.path.abspath('../../%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
+     shutil.copyfile(os.path.abspath('../../src/%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
 
 breathe_default_project = "transduino"
 

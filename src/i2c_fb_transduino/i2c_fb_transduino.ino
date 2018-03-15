@@ -14,10 +14,14 @@
 #define SW_SERIAL_PORT 2
 
 
-#define MOTOR_COMMAND_SIZE 3
+#define MOTOR_COMMAND_SIZE 9
 #define MOTOR_COMMAND 'm'
-#define MOTOR_TIMEOUT 500
+#define MOTOR_TIMEOUT 1000
 
+//2^8 * 10^6 * 2 * pi * (6 / 2) * 0.0254 / 4096
+#define PULSE_TO_UM 29924
+//12 / 2^8 = 0.05m/s
+#define MAX_ERR 12
 /**
  * Defining DEBUG switches to using software serial
  * for communication with the Sabertooth Motor Controller
@@ -25,7 +29,7 @@
  * Connect S1 of the Sabertooth to Pin SW_SERIAL_PORT in debug mode
  * Connect S1 of the Sabertooth to Pin 1 when not in debug mode
  */
-#define DEBUG
+#define DEBUG 0
 
 // struct to send both encoder counts over SPI
 typedef struct EncoderDataTag {
@@ -41,17 +45,24 @@ int8_t Motor2Power = 0;
 // used to timeout the arduino after MOTOR_TIMEOUT milliseconds
 long LastPiCommandTime= 0;
 
-
+long lastLoopTime = 0;
+long deltaTime = 0;
+long now = 0;
+long tempEncoderCount1 = 0;
+long tempEncoderCount2 = 0;
+long encoderSpeed1 = 0;
+long encoderSpeed2 = 0;
+long dSpeed1 = 0;
+long dSpeed2 = 0;
 // Holds current counts for the encoder
 EncoderData data;
 
 // initialize sabertooth
-#ifndef DEBUG
-Sabertooth ST(SABERTOOTH_ADDRESS);
-#endif
-#ifdef DEBUG
+#if DEBUG
 SoftwareSerial SWSerial(NOT_A_PIN, SW_SERIAL_PORT);
 Sabertooth ST(SABERTOOTH_ADDRESS, SWSerial);
+#else
+Sabertooth ST(SABERTOOTH_ADDRESS);
 #endif
 
 // initialize the encoders
@@ -65,7 +76,7 @@ Encoder_Buffer Encoder2(ENCODER2_SELECT_PIN);
 void setup() {
   
   // start Serial
-  #ifdef DEBUG
+  #if DEBUG
   SWSerial.begin(BAUD_RATE);
   #endif
   Serial.begin(BAUD_RATE);
@@ -84,7 +95,7 @@ void setup() {
   Wire.onReceive(receiveData);
   Wire.onRequest(sendData);
   
-  #ifdef DEBUG
+  #if DEBUG
   Serial.println("Ready!");
   #endif
 }
@@ -93,22 +104,49 @@ void setup() {
  * Main loop
  */
 void loop() {
+  now = millis();
   // Timeout if we haven't received a command int TIMEOUT millisecounds
-  if (millis() - LastPiCommandTime >= MOTOR_TIMEOUT) {
+  if (now - LastPiCommandTime >= MOTOR_TIMEOUT) {
       Motor1Power = 0;
       Motor2Power = 0;
   }
-  
+  deltaTime = now-lastLoopTime;
   
   // Read Encoders
-  data.encoder1Count = Encoder1.readEncoder();
-  data.encoder2Count = Encoder2.readEncoder();
+  tempEncoderCount1 = Encoder1.readEncoder();
+  tempEncoderCount2 = Encoder2.readEncoder();
 
-  #ifdef DEBUG2
+  //Find difference from last values
+  //Calculate speed in m/s in Q8.23 format
+  encoderSpeed1 = (tempEncoderCount1 - data.encoder1Count)*PULSE_TO_UM/deltaTime;
+  encoderSpeed2 = (tempEncoderCount2 - data.encoder2Count)*PULSE_TO_UM/deltaTime;
+
+  data.encoder1Count = tempEncoderCount1;
+  data.encoder2Count = tempEncoderCount2;
+  dSpeed1 = targetSpeed1 - encoderSpeed1;
+  dSpeed2 = targetSpeed2 - encoderSpeed2;
+  if(dSpeed1 > MAX_ERR && Motor1Power != 127) {
+    Motor1Power++;
+  }
+  else if(dSpeed1 < -MAX_ERR && Motor1Power != -128) {
+    Motor1Power--;
+  }
+  if(dSpeed2 > MAX_ERR && Motor2Power != 127) {
+    Motor2Power++;
+  }
+  else if(dSpeed2 < -MAX_ERR && Motor2Power != -128) {
+    Motor2Power--;
+  }
+
+  #if DEBUG
   if (Motor1Power != 0 && Motor2Power != 0) {
-    Serial.print("Sending: ");
+    Serial.print("Left wheel v=");
+    Serial.print(encoderSpeed1);
+    Serial.print(", Right wheel v=");
+    Serial.print(encoderSpeed2);
+    Serial.print(", Sending: m1=");
     Serial.print(Motor1Power);
-    Serial.print(" | ");
+    Serial.print(", m2=");
     Serial.println(Motor2Power);
   }
   #endif
@@ -116,7 +154,7 @@ void loop() {
   // Send powers to motors
   ST.motor(1,Motor1Power);
   ST.motor(2,Motor2Power);
-    
+  lastLoopTime = now;
 }
 
 /**
@@ -143,14 +181,14 @@ void receiveData(int byteCount){
   // make sure that we read the correct number of bytes and that we have a move command
   // and update motor powers
   if (i == MOTOR_COMMAND_SIZE && readBuffer[0] == MOTOR_COMMAND) {
-    Motor1Power = readBuffer[1];
-    Motor2Power = readBuffer[2];
+    targetSpeed1 = (readBuffer[1] << 24)+(readBuffer[2] << 16)+(readBuffer[3] << 8)+readBuffer[4];
+    targetSpeed2 = (readBuffer[5] << 24)+(readBuffer[6] << 16)+(readBuffer[7] << 8)+readBuffer[8];
   
     // update the time we last received a message
     LastPiCommandTime = millis();
   }
   
-  #ifdef DEBUG
+  #if DEBUG
   if (Motor1Power != 0 && Motor2Power != 0) {
     Serial.print("Received ");
     Serial.print(byteCount);
@@ -170,7 +208,7 @@ void receiveData(int byteCount){
 void sendData(){
   Wire.write((byte*)(&data),sizeof(EncoderData));
   
-  #ifdef DEBUG
+  #if DEBUG
   Serial.print("Encoder 1 Count: ");
   Serial.println(data.encoder1Count);
   Serial.print("Encoder 2 Count: ");

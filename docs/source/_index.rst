@@ -106,4 +106,3 @@ The following are known potential issues with the code.  Problems arising from t
    :caption: API Documentation
    
    transduino
-   setbaud

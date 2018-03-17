@@ -1,16 +1,18 @@
-/*!
-   \file transduino.ino
-   \brief The Arduino code for the Transnavigators' Voice Controlled Wheelchair
-
-  Input and output is over <a href="https://www.arduino.cc/en/Reference/Wire">I2C</a>
-
-  Interfaces over SPI with a <a href="https://www.superdroidrobots.com/shop/item.aspx/dual-ls7366r-quadrature-encoder-buffer/1523/">Dual LS7366R Quadrature Encoder Buffer</a>
-
-  Interfaces over UART with a <a href="https://www.dimensionengineering.com/products/sabertooth2x60">Sabertooth 2x60</a>
-
-  \mainpage Transduino
-
-*/
+/**
+ * @file transduino.ino
+ * @brief The Arduino code for the Transnavigators' Voice Controlled Wheelchair
+ * 
+ * Transduino is Arduino code written for the Transnavigators' Voice Controlled Wheelchair.
+ * It supports communication with a Raspberry Pi over [I2C](https://www.arduino.cc/en/Reference/Wire), with the Raspberry Pi configured as the master and the Arduino as the slave.
+ * Over the interface, the Arduino accepts requests for setting the desired speeds of each motor and requests for getting the current counts of each encoder.
+ * The Arduino interfaces with a [Sabertooth 2x60](https://www.dimensionengineering.com/products/sabertooth2x60) motor controller using a UART interface and
+ * a [Dual LS7366R Quadrature Encoder Buffer](https://www.superdroidrobots.com/shop/item.aspx/dual-ls7366r-quadrature-encoder-buffer/1523/) using SPI.
+ *
+ * @author Transnavigators
+ * 
+ * @mainpage Transduino
+ *
+ */
 
 #include <Wire.h>
 #include <SPI.h>
@@ -19,123 +21,123 @@
 #include <Encoder_Buffer.h>
 #include <stdint.h>
 
-//! The I2C address of the Arduino
+/// @brief The I2C address of the Arduino
 #define SLAVE_ADDRESS 0x04
 
-//! The serial baud rate for debug messages and Sabertooth communication
+/// @brief The serial baud rate for debug messages and Sabertooth communication
 #define BAUD_RATE 115200
 
-/*! \def SABERTOOTH_ADDRESS
-    \brief The current address of the motor controller
-
-    The address can be changed using a switch on the motor controller
-*/
+/**
+ * @brief The current address of the motor controller
+ *
+ * The address can be changed using the switches on the motor controller
+ */
 #define SABERTOOTH_ADDRESS 128
 
-//! The left encoder select pin number
+/// @brief The left encoder select pin number
 #define ENCODER1_SELECT_PIN 7
 
-//! The right encoder select pin number
+/// @brief The right encoder select pin number
 #define ENCODER2_SELECT_PIN 8
 
-//! The digital pin to use software serial with for debug mode
+/// @brief The digital pin to use software serial with for debug mode
 #define SW_SERIAL_PORT 2
 
-/*! \def MOVE_COMMAND_SIZE
-    \brief The number of bytes a command from the motor should be
-
-    1 byte for the motor command and 8 bytes for the motor speeds (2 floats, 4 bytes each)
-*/
+/**
+ * @brief The number of bytes a command from the motor should be
+ *
+ * 1 byte for the motor command and 8 bytes for the motor speeds (2 floats, 4 bytes each)
+ */
 #define MOVE_COMMAND_SIZE 9
 
-//! The command byte for a move command
+/// @brief The command byte for a move command
 #define MOVE_COMMAND 'm'
 
 
-//! Stop moving after 500000 us without receiving a command
+/// @brief The number of microseconds without receiving a command which will cause the chair to stop moving
 #define MOVE_TIMEOUT 500000
 
-/*! \def PULSES_PER_METER
-    \brief The number of encoder pulses per meter (6 inch wheel diameter)
-    4096 pulses per revolution / (2*pi*(6 inches/2) * 0.0254 inches/meter)
-*/
+/**
+ * @brief The number of encoder pulses per meter (6 inch wheel diameter)
+ * 
+ * 4096 pulses per revolution / (2*pi*(6 inches/2) * 0.0254 inches/meter)
+ */
 #define PULSES_PER_METER 8555
 
-//! 2 ms delay to stabilize the system and make sure the motor's power doesn't oscillate
-#define LOOP_DELAY 2
+// #define LOOP_DELAY 2
 
-/*! \def DEBUG
-    \brief Define DEBUG to turn on debug mode
-
-    Defining DEBUG switches communication with the motor controller to software serial
-    Connect S1 of the Sabertooth to Pin SW_SERIAL_PORT in debug mode
-    Connect S1 of the Sabertooth to Pin 1 when not in debug mode
-*/
+/**
+ * @brief Define DEBUG to turn on debug mode
+ *   
+ * Defining DEBUG switches communication with the motor controller to software serial 
+ * Connect S1 of the Sabertooth to Pin SW_SERIAL_PORT in debug mode
+ * Connect S1 of the Sabertooth to Pin 1 when not in debug mode
+ */
 #define DEBUG
 
-/*! \struct EncoderDataTag
-    \brief A struct to send both encoder counts over SPI
-*/
+/**
+ * @brief A struct to send both encoder counts over SPI
+ */
 typedef struct EncoderDataTag {
-  int32_t encoder1Count;
-  int32_t encoder2Count;
+  int32_t encoder1Count;    ///< Count of encoder 1
+  int32_t encoder2Count;    ///< Count of encoder 2
 } EncoderData;
 
-/*! \union FloatUnionTag
-    \brief A union for retrieving floats over I2C
-*/
+/**
+ * @brief A union for retrieving floats over I2C
+ */
 typedef union FloatUnionTag {
-  byte bVal[4];
-  float fVal;
+  byte bVal[4];   ///< Byte value
+  float fVal;     ///< Float value
 } FloatUnion;
 
-//! The desired speed of the left motor
-float Motor1Speed = 0;
+/// @brief The desired speed of the left motor
+volatile float Motor1Speed = 0;
 
-//! The desired speed of the right motor
-float Motor2Speed = 0;
+/// @brief The desired speed of the right motor
+volatile float Motor2Speed = 0;
 
-//! The current power of the left motor
+/// @brief The current power of the left motor
 int8_t Motor1Power = 0;
 
-//! The current power of the right motor
+/// @brief The current power of the right motor
 int8_t Motor2Power = 0;
 
-/*! \var uint32_t LastPiCommandTime
-    \brief The last time we received a message from the Arduino
-    used to timeout the arduino after MOVE_TIMEOUT microseconds
+/** 
+ * @brief  The last time a message was received
+ * 
+ * Used to timeout the arduino after MOVE_TIMEOUT microseconds
  */
 uint32_t LastPiCommandTime = 0;
 
-//! The timestamp of the last iteration of the loop
+/// The timestamp of the last iteration of the loop
 uint32_t PreviousLoopTime = 0;
 
-/*! \var EncoderData data
-    \brief Holds current counts for the encoder
- */
+/// @brief Holds current counts for the encoder
 EncoderData data;
 
 // initialize sabertooth
+
 #ifndef DEBUG
-//! The Sabertooth motor controller object from the <a href="https://www.dimensionengineering.com/software/SabertoothArduinoLibrary/html/index.html">Sabertooth library</a>
+/// @brief The Sabertooth motor controller object from the <a href="https://www.dimensionengineering.com/software/SabertoothArduinoLibrary/html/index.html">Sabertooth library</a>
 Sabertooth ST(SABERTOOTH_ADDRESS);
 #endif
 #ifdef DEBUG
-//! The serial port being used for the motor controller
+/// @brief The serial port being used for the motor controller
 SoftwareSerial SWSerial(NOT_A_PIN, SW_SERIAL_PORT);
 
-//! The Sabertooth motor controller object from the <a href="https://www.dimensionengineering.com/software/SabertoothArduinoLibrary/html/index.html">Sabertooth library</a>
+/// @brief The Sabertooth motor controller object from the <a href="https://www.dimensionengineering.com/software/SabertoothArduinoLibrary/html/index.html">Sabertooth library</a>
 Sabertooth ST(SABERTOOTH_ADDRESS, SWSerial);
 #endif
 
-//! The left encoder object from the <a href="https://github.com/SuperDroidRobots/Encoder-Buffer-Library">Encoder_Buffer library</a>
+/// @brief The left encoder object from the <a href="https://github.com/SuperDroidRobots/Encoder-Buffer-Library">Encoder_Buffer library</a>
 Encoder_Buffer Encoder1(ENCODER1_SELECT_PIN);
 
-//! The right encoder object from the <a href="https://github.com/SuperDroidRobots/Encoder-Buffer-Library">Encoder_Buffer library</a>
+/// @brief The right encoder object from the <a href="https://github.com/SuperDroidRobots/Encoder-Buffer-Library">Encoder_Buffer library</a>
 Encoder_Buffer Encoder2(ENCODER2_SELECT_PIN);
 
 
-//! Setup routine
+/// Setup routine
 void setup() {
 
   // start Serial
@@ -163,7 +165,7 @@ void setup() {
 #endif
 }
 
-//! Main loop
+/// Main loop
 void loop() {
   // get the current clock time
   uint32_t currentLoopTime = micros();
@@ -246,15 +248,17 @@ void loop() {
   // delay(LOOP_DELAY);
 }
 
-//! Callback for receiving I2C data
-/*!
- * \param [in] byteCount the number of bytes received
+/**
+ * @brief Callback for receiving I2C data
+ * 
  * This function only accepts messages in the following format:
  *
  * | Register (1 byte) | Motor 1 Speed (4 byte float)   | Motor 2 Speed (4 byte float)   |
  * |-------------------|--------------------------------|--------------------------------|
  * |        'm'        | Desired speed of Motor 1 (m/s) | Desired speed of Motor 2 (m/s) |
  *
+ * @param [in] byteCount the number of bytes received
+ * 
  */
 void receiveData(int byteCount) {
 
@@ -314,9 +318,11 @@ void receiveData(int byteCount) {
 #endif
 }
 
-//! Callback for i2c data request
-/*!
- * Sends the current counts of the encoder
+/**
+ * @brief Callback for i2c data request
+ * 
+ * Sends the current counts of the encoder.  Response is in the form:
+ * 
  * | Encoder 1 Count (signed 32 bit integer)       | Encoder 2 Count (signed 32 bit integer)       |
  * |-----------------------------------------------|-----------------------------------------------|
  * | Cumulative number of pulses seen by Encoder 1 | Cumulative number of pulses seen by Encoder 2 |

@@ -1,5 +1,5 @@
-Transduino
-==========
+transduino.ino
+==============
 
 .. doxygenfile:: transduino.ino
    :project: transduino

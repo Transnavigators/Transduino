@@ -1,4 +1,4 @@
-Intro to Transduino
+Transduino
 ###################
 
 Transduino is Arduino code written for the Transnavigators' Voice Controlled Wheelchair.  It supports communication with a Raspberry Pi over I2C, with the Raspberry Pi configured as the master and the Arduino as the slave.  Over the interface, the Arduino accepts requests for setting the desired speeds of each motor and requests for getting the current counts of each encoder.  The Arduino interfaces with a `Sabertooth 2x60 <https://www.dimensionengineering.com/products/sabertooth2x60>`_ motor controller and a `Dual LS7366R Quadrature Encoder Buffer <https://www.superdroidrobots.com/shop/item.aspx/dual-ls7366r-quadrature-encoder-buffer/1523/>`_.
@@ -104,10 +104,5 @@ The following are known potential issues with the code.  Problems arising from t
    :maxdepth: 3
    :hidden:
    :caption: Modules:
-   
-   calibrate
-   i2c_fb_transduino
-   i2c_transduino
-   setbaud
-   testi2c
+  
    transduino

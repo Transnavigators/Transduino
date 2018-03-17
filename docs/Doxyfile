@@ -1,6 +1,6 @@
 PROJECT_NAME         = "transduino"
 XML_OUTPUT           = build/xml
-INPUT                = ../src/calibrate ../src/i2c_fb_transduino ../src/i2c_transduino  ../src/setbaud ../src/testi2c ../src/transduino
+INPUT                = ../transduino
 GENERATE_LATEX       = NO
 GENERATE_MAN         = NO
 GENERATE_RTF         = NO
@@ -12,4 +12,4 @@ QUIET                = YES
 QT_AUTOBRIEF         = YES
 WARN_IF_UNDOCUMENTED = NO
 FILE_PATTERNS        = *.ino
-EXTENSION_MAPPING    = ino=C
+EXTENSION_MAPPING    = ino=C++

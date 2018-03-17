@@ -13,9 +13,6 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
-import shutil
 import subprocess
 
 # Create build directory so Doxygen doesn't fail
@@ -25,19 +22,6 @@ if not os.path.exists(xml_build_dir):
 
 # Generate xml files for docstrings
 subprocess.call('cd .. && doxygen Doxyfile', shell=True)
-#subprocess.call('pip install breathe', shell=True)
-
-# Install and import breathe
-#import importlib
-import breathe
-#try:
-#    importlib.import_module('breathe')
-#except ImportError:
-#    import pip
-#    pip.main(['install', 'breathe'])
-#finally:
-#    globals()['breathe'] = importlib.import_module('breathe')
-
 
 # -- Project information -----------------------------------------------------
 
@@ -70,15 +54,7 @@ extensions = [
 ]
 
 breathe_projects = { 'transduino': '../build/xml/' }
-# breathe_projects_source = {'transduino': ('', ['transduino.ino'])}
 
-# project_list = ['transduino']
-# for proj in project_list:
-     # shutil.copyfile(os.path.abspath('../../%s/%s.ino' % (proj, proj)),'%s.ino' % proj)
-
-#breathe_default_project = "transduino"
-
-#breathe_domain_by_extension = {"ino": "c",}
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['ntemplates']
 

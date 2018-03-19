@@ -20,6 +20,7 @@
 #include <Sabertooth.h>
 #include <Encoder_Buffer.h>
 #include <stdint.h>
+//#include <avr/wdt.h>
 
 /// @brief The I2C address of the Arduino
 #define SLAVE_ADDRESS 0x04
@@ -57,8 +58,8 @@
 /// @brief The number of microseconds without receiving a command which will cause the chair to stop moving
 #define MOVE_TIMEOUT 100000
 
-
-#define DEADBAND 0.01
+/// @brief The acceptable difference in velocities, set to at least (max speed/128)
+#define DEADBAND 0.05
 /**
    @brief The number of encoder pulses per meter (6 inch wheel diameter) /10^6
 
@@ -66,7 +67,7 @@
 */
 #define PULSES_PER_METER 0.00855510035
 
-#define LOOP_DELAY 5
+#define LOOP_DELAY 10
 
 /**
    @brief Define DEBUG to turn on debug mode
@@ -115,7 +116,7 @@ uint32_t LastPiCommandTime = 0;
 /// The timestamp of the last iteration of the loop
 uint32_t PreviousLoopTime = 0;
 
-// @brief Holds current counts for the encoder
+/// @brief Holds current counts for the encoder
 EncoderData data;
 
 // initialize sabertooth
@@ -138,6 +139,10 @@ Encoder_Buffer Encoder1(ENCODER1_SELECT_PIN);
 /// @brief The right encoder object from the <a href="https://github.com/SuperDroidRobots/Encoder-Buffer-Library">Encoder_Buffer library</a>
 Encoder_Buffer Encoder2(ENCODER2_SELECT_PIN);
 
+volatile FloatUnion motor1Speed, motor2Speed;
+
+// buffer to hold the commands read from the motor
+volatile byte readBuffer[MOVE_COMMAND_SIZE];
 
 /// Setup routine
 void setup() {
@@ -161,31 +166,25 @@ void setup() {
   // define callbacks for i2c communication
   Wire.onReceive(receiveData);
   Wire.onRequest(sendData);
-
+  
 #ifdef DEBUG
   Serial.println("Ready!");
 #endif
+  //wdt_enable(WDTO_8S);
 }
 
 /// Main loop
 void loop() {
+  //wdt_reset();
   // get the current clock time
   uint32_t currentLoopTime = micros();
 
   // timeout if we haven't received a command in TIMEOUT milliseconds
-  if (currentLoopTime - LastPiCommandTime >= MOVE_TIMEOUT) {
-    Motor1Speed = 0;
-    Motor2Speed = 0;
-#ifdef DEBUG
-    Serial.println("Timed out");
-#endif
-  }
-
+  
+  
+  
   // calculate the time interval since the last iteration of the loop
-  uint32_t deltaTime = currentLoopTime - PreviousLoopTime;
-
-  // reset the current loop time
-  PreviousLoopTime = currentLoopTime;
+  int32_t deltaTime = currentLoopTime - PreviousLoopTime;
 
   // read encoders and negate the 2nd encoder count <- important
   int32_t currentEncoder1Count = Encoder1.readEncoder();
@@ -199,26 +198,33 @@ void loop() {
   // assign data for encoder count
   data.encoder1Count = currentEncoder1Count;
   data.encoder2Count = currentEncoder2Count;
-
-  // get difference between the desired and actual motor speed
-  // (will be positive if we need to speed up and negative if we need to slow down)
-  float motor1SpeedDiff = Motor1Speed - encoder1Speed;
-  float motor2SpeedDiff = Motor2Speed - encoder2Speed;
-
-  // increase motor power accordingly and saturate at [-127,127] per Sabertooth library documentation
-  if (motor1SpeedDiff > DEADBAND && Motor1Power != 127) {
-    Motor1Power++;
+  if((Motor1Speed == 0 && Motor2Speed == 0) || currentLoopTime - LastPiCommandTime >= MOVE_TIMEOUT) {
+    Motor1Power = 0;
+    Motor2Power = 0;
   }
-  else if (motor1SpeedDiff < -DEADBAND && Motor1Power != -127) {
-    Motor1Power--;
+  if (currentLoopTime - LastPiCommandTime < MOVE_TIMEOUT) {
+    // get difference between the desired and actual motor speed
+    // (will be positive if we need to speed up and negative if we need to slow down)
+    float motor1SpeedDiff = Motor1Speed - encoder1Speed;
+    float motor2SpeedDiff = Motor2Speed - encoder2Speed;
+  
+    // increase motor power accordingly and saturate at [-127,127] per Sabertooth library documentation
+    if (motor1SpeedDiff > DEADBAND && Motor1Power != 127) {
+      Motor1Power++;
+    }
+    else if (motor1SpeedDiff < -DEADBAND && Motor1Power != -127) {
+      Motor1Power--;
+    }
+    if (motor2SpeedDiff > DEADBAND && Motor2Power != 127) {
+      Motor2Power++;
+    }
+    else if (motor2SpeedDiff < -DEADBAND && Motor2Power != -127) {
+      Motor2Power--;
+    }
   }
-  if (motor2SpeedDiff > DEADBAND && Motor2Power != 127) {
-    Motor2Power++;
-  }
-  else if (motor2SpeedDiff < -DEADBAND && Motor2Power != -127) {
-    Motor2Power--;
-  }
-
+  
+  // reset the current loop time
+  PreviousLoopTime = currentLoopTime;
 
 #ifdef DEBUG
   // prints desired speed, current speed, current motor power, and current encoder counts and loop speed
@@ -268,17 +274,16 @@ void loop() {
 
 */
 void receiveData(int byteCount) {
-
-  // buffer to hold the commands read from the motor
-  byte readBuffer[MOVE_COMMAND_SIZE];
+  
+  uint32_t now = micros(); 
   uint8_t i = 0;
 
   // read all byte from the I2C buffer
   // if we get the number of bits that we expect for a move command, save the data into the buffer
   // if not then just empty the buffer
-  while (Wire.available() && i < MOVE_COMMAND_SIZE) {
+  while (Wire.available()) {
     // makes sure we aren't getting junk from the i2c line
-    if (byteCount == MOVE_COMMAND_SIZE) {
+    if (byteCount == MOVE_COMMAND_SIZE && i < MOVE_COMMAND_SIZE) {
       // save the data into the buffer
       readBuffer[i++] = Wire.read();
     }
@@ -291,10 +296,7 @@ void receiveData(int byteCount) {
   // make sure that we read the correct number of bytes and that we have a move command
   // and update desired motor speeds
   if (i == MOVE_COMMAND_SIZE && readBuffer[0] == MOVE_COMMAND) {
-
-
     // use a union to parse the speed
-    FloatUnion motor1Speed, motor2Speed;
     motor1Speed.bVal[0] = readBuffer[1];
     motor1Speed.bVal[1] = readBuffer[2];
     motor1Speed.bVal[2] = readBuffer[3];
@@ -308,7 +310,7 @@ void receiveData(int byteCount) {
     Motor2Speed = motor2Speed.fVal;
 
     // update the time we last received a message
-    LastPiCommandTime = micros();
+    LastPiCommandTime = now;
   }
 
 #ifdef DEBUG

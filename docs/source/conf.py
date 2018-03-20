@@ -16,6 +16,15 @@ import os
 import subprocess
 import shutil
 
+try:
+    import breathe
+except ImportError:
+    import pip
+    pip.main(['install', 'breathe'])
+finally:
+    global breathe
+    import breathe
+
 # Create build directory so Doxygen doesn't fail
 xml_build_dir = os.path.abspath('../build/xml/')
 if not os.path.exists(xml_build_dir):

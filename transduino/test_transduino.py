@@ -1,3 +1,11 @@
+# test_transduino
+# 
+# Script to test if motor control system is working correctly
+# Users can enter desired speeds for both motors and receive the counts from the encoders
+#
+# @author Transnavigators
+* 
+
 import smbus
 import time
 import struct

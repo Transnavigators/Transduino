@@ -16,8 +16,18 @@ Transduino is Arduino code written for the Transnavigators' Voice Controlled Whe
 
 Copies of the required libraries are included in this repository in `/library/*`
 
-* Note that the libraries are originally from: [Sabertooth Library](https://www.dimensionengineering.com/software/SabertoothArduinoLibraries.zip) and [Encoder Buffer Library](https://github.com/SuperDroidRobots/Encoder-Buffer-Library.git)
+* **Note:** The libraries are originally from [Sabertooth Library](https://www.dimensionengineering.com/software/SabertoothArduinoLibraries.zip) and [Encoder Buffer Library](https://github.com/SuperDroidRobots/Encoder-Buffer-Library.git)
 
+### Raspberry Pi Setup
+
+* **Important:** Due to the Raspberry Pi's clock streching bug, set the Pi's I2C baud rate to 25 kHz in order to prevent the Arduino from clock stretching.
+
+## Debug Mode
+
+When the debug macro is `#define DEBUG` is defined, the Arduino is placed in DEBUG mode.  In this mode, the user can view debug messages from the Arduino using the Serial Monitor.  Pin 2 (`SW_SERIAL_PORT`) is configured to use Software Serial to send data to the motor controller in order to free the Arduino Uno's sole UART interface for communication with the computer.  As a result the following change must be made when switching between debug and production mode:
+
+* **Debug Mode:** Pin 2 -> S1
+* **Production Mode:** Pin 1 (TX) -> S1
 
 ## Raspberry Pi Interface (I2C)
 
@@ -79,6 +89,11 @@ The power sent to each motor is calculated using feedback from the encoders.  Th
 
 The following are known potential issues with the code.  Problems arising from these issues may cause minor glitching but should not cause any major affects on the overall system.
 
-* **Issue:** Encoder counts can wrap after ~87 minutes.  **Resolution:** The Raspberry Pi should account for this.
-* **Issue:** micros() will wrap ~72 minutes which may result in a near zero current speed.  **Resolution:** Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
-* **Issue:** Slow float operations.  **Resolution:** If the code is too slow, we can replace all floating point operations with fixed point ones.
+* **Issue:** Encoder counts can wrap after ~87 minutes.
+* **Resolution:** The Raspberry Pi should account for this.
+
+* **Issue:** micros() will wrap ~72 minutes which may result in a near zero current speed.
+* **Resolution:** Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
+
+* **Issue:** Slow float operations.
+* **Resolution:** If the code is too slow, we can replace all floating point operations with fixed point ones.

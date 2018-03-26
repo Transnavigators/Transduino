@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.org/Transnavigators/Transduino.svg?branch=master)](https://travis-ci.org/Transnavigators/Transduino)
 [![Documentation Status](https://readthedocs.org/projects/transduino/badge/?version=master)](http://transduino.readthedocs.io/en/master/?badge=master)
+
 # Transduino
 
 Transduino is Arduino code written for the Transnavigators' Voice Controlled Wheelchair.  It supports communication with a Raspberry Pi over I2C, with the Raspberry Pi configured as the master and the Arduino as the slave.  Over the interface, the Arduino accepts requests for setting the desired speeds of each motor and requests for getting the current counts of each encoder.  The Arduino interfaces with a [Sabertooth 2x60](https://www.dimensionengineering.com/products/sabertooth2x60) motor controller and a [Dual LS7366R Quadrature Encoder Buffer](https://www.superdroidrobots.com/shop/item.aspx/dual-ls7366r-quadrature-encoder-buffer/1523/).
@@ -29,13 +30,17 @@ When the debug macro is `#define DEBUG` is defined, the Arduino is placed in DEB
 * **Debug Mode:** Pin 2 -> S1
 * **Production Mode:** Pin 1 (TX) -> S1
 
-## Raspberry Pi Interface (I2C)
+## Serial Interfaces
+
+The Arduino uses I2C, UART, and SPI to communicate with the different components.
+
+### Raspberry Pi Interface (I2C)
 
 The Arduino communicates with the Raspberry Pi over I2C.  The Raspberry Pi acts as the master and the Arduino acts as the slave.  Over the interface, the Arduino receives the desired speed of each wheel and sends the current counts of each encoder.  The Arduino is configured with an address of 0x04.
 
 * **Arduino's I2C address:** 0x04 (`SLAVE_ADDRESS`)
 
-### Communication Data Format
+#### Data Format
 
 1. Sending a speed (m/s) to the motors:
 
@@ -59,7 +64,7 @@ The Arduino communicates with the Raspberry Pi over I2C.  The Raspberry Pi acts 
 > |:---------------------------------------------:|:---------------------------------------------:|
 > | Cumulative number of pulses seen by Encoder 1 | Cumulative number of pulses seen by Encoder 2 |
 
-## Motor Controller Interface (UART)
+### Motor Controller Interface (UART)
 
 The Arduino communicates with the Sabertooth Motor Controller using a UART interface.  During normal operation, data is send from the Arduino's pin 1 (TX) to the Sabertooth's pin S1.  In debug mode, a Software Serial interface is used to send data to the motor controller in order to free the UART interface for printing debug messages over USB.  In this instance the Arduino transmits data using pin 2 (or whatever `SW_SERIAL_PORT` is set to).
 
@@ -71,7 +76,7 @@ The Sabertooth is physically configured with an address of 128 as is reflected i
 
 For more information, consult the [Sabertooth 2x60 User Guide](https://www.dimensionengineering.com/datasheets/Sabertooth2x60.pdf)
 
-## Encoder Interface (SPI)
+### Encoder Interface (SPI)
 
 The Arduino communicates with the Quadrature Encoder Buffer over SPI.  The buffer chip is used to count pulses for each encoder because the [1024 P/R encoders](https://www.sparkfun.com/products/11102) send out pulses faster than the Arduino can count.
 

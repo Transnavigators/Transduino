@@ -74,7 +74,7 @@ The Sabertooth is physically configured with an address of 128 as is reflected i
 * **Baud rate for UART interface:** 115200 (`BAUD_RATE`)
 * **UART Tx pin:** 1 (normal), 2 (debug `SW_SERIAL_PORT`)
 
-For more information, consult the [Sabertooth 2x60 User Guide](https://www.dimensionengineering.com/datasheets/Sabertooth2x60.pdf)
+For more information, consult the [Sabertooth 2x60 User Guide](https://www.dimensionengineering.com/datasheets/Sabertooth2x60.pdf).
 
 ### Encoder Interface (SPI)
 
@@ -94,11 +94,15 @@ The power sent to each motor is calculated using feedback from the encoders.  Th
 
 The following are known potential issues with the code.  Problems arising from these issues may cause minor glitching but should not cause any major affects on the overall system.
 
-* **Issue:** Encoder counts can wrap after ~87 minutes.
-* **Resolution:** The Raspberry Pi should account for this.
-
-* **Issue:** micros() will wrap ~72 minutes which may result in a near zero current speed.
-* **Resolution:** Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
-
-* **Issue:** Slow float operations.
-* **Resolution:** If the code is too slow, we can replace all floating point operations with fixed point ones.
+1. Encoder Buffer wrapping
+> * **Issue:** Encoder counts can wrap after ~87 minutes.
+> * **Resolution:** The Raspberry Pi should account for this.
+2. Arduino clock wrapping
+> * **Issue:** micros() will wrap ~72 minutes which may result in a near zero current speed.
+> * **Resolution:** Since the motor's power can only change by one level every loop iteration, this will have negligable effects on the performance of the system.
+3. Slow operations
+> * **Issue:** Slow float operations.
+> * **Resolution:** If the code is too slow, we can replace all floating point operations with fixed point ones.
+4. Wheels shake when the desired speed is 0 m/s
+> * **Issue:** The actual speed of the wheels may oscillate around the desired speed.
+> * **Resolution:** Tighten the gears or anything mechanical in the drive train that could be oscillating.  Increase the loop delay (`LOOP_DELAY`) or increase the load on the platform to increase damping.

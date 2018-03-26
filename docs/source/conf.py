@@ -32,8 +32,8 @@ if not os.path.exists(xml_build_dir):
 
 # Generate xml files for docstrings
 subprocess.call('cd .. && doxygen Doxyfile', shell=True)
-proj = 'transduino'
-shutil.copyfile(os.path.abspath('../../%s/%s.ino' % (proj, proj)), '%s.ino' % proj)
+# proj = 'transduino'
+# shutil.copyfile(os.path.abspath('../../%s/%s.ino' % (proj, proj)), '%s.ino' % proj)
 # -- Project information -----------------------------------------------------
 
 project = 'transduino'

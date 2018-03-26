@@ -120,20 +120,25 @@ EncoderData data;
 // initialize sabertooth
 
 #ifndef DEBUG
+/// @var Sabertooth ST
 /// @brief The Sabertooth motor controller object from the <a href="https://www.dimensionengineering.com/software/SabertoothArduinoLibrary/html/index.html">Sabertooth library</a>
 Sabertooth ST(SABERTOOTH_ADDRESS);
 #endif
 #ifdef DEBUG
+/// @var SoftwareSerial SWSerial
 /// @brief The serial port being used for the motor controller
 SoftwareSerial SWSerial(NOT_A_PIN, SW_SERIAL_PORT);
 
+/// @var Sabertooth ST)
 /// @brief The Sabertooth motor controller object from the <a href="https://www.dimensionengineering.com/software/SabertoothArduinoLibrary/html/index.html">Sabertooth library</a>
 Sabertooth ST(SABERTOOTH_ADDRESS, SWSerial);
 #endif
 
+/// @var Encoder_Buffer Encoder1
 /// @brief The left encoder object from the <a href="https://github.com/SuperDroidRobots/Encoder-Buffer-Library">Encoder_Buffer library</a>
 Encoder_Buffer Encoder1(ENCODER1_SELECT_PIN);
 
+/// @var Encoder_Buffer Encoder2
 /// @brief The right encoder object from the <a href="https://github.com/SuperDroidRobots/Encoder-Buffer-Library">Encoder_Buffer library</a>
 Encoder_Buffer Encoder2(ENCODER2_SELECT_PIN);
 
@@ -247,7 +252,7 @@ void loop() {
   ST.motor(2, Motor2Power);
 
 #ifndef DEBUG
-// delay for prod to prevent oscillations
+  // delay for prod to prevent oscillations
   delay(LOOP_DELAY);
 #endif
 }
@@ -337,10 +342,10 @@ void sendData() {
   Wire.write((byte*)(&data), sizeof(EncoderData));
 
 #ifdef DEBUG
-//  Serial.print("Encoder 1 Count: ");
-//  Serial.println(data.encoder1Count);
-//  Serial.print("Encoder 2 Count: ");
-//  Serial.println(data.encoder2Count);
+  Serial.print("Encoder 1 Count: ");
+  Serial.println(data.encoder1Count);
+  Serial.print("Encoder 2 Count: ");
+  Serial.println(data.encoder2Count);
 #endif
 }
 

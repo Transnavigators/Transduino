@@ -90,6 +90,8 @@ The select pin for Encoder 1 is 7 (`ENCODER1_SELECT_PIN`) and the select pin for
 
 The power sent to each motor is calculated using feedback from the encoders.  The current speeds of each wheel are calculated every iteration of the main loop, and the powers of the each motor is adjusted accordingly by one level in the corresponding direction.  By using constant power changes, any errors caused by bad data or other glitching will have only a momentary effect on the system and not cause large fluctuations in the current speed of the chair.
 
+In addition, a timeout (`MOVE_TIMEOUT`) is applied on the motors to stop the platform from moving if the Arduino has not receive a command in a long time.  This timeout is to prevent the the chair from moving if the something happens to the Raspberry Pi or the I2C interface.
+
 ### Limitations
 
 The following are known potential issues with the code.  Problems arising from these issues may cause minor glitching but should not cause any major affects on the overall system.

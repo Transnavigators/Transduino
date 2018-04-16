@@ -1,5 +1,3 @@
-|Build Status| |Documentation Status|
-
 Transduino
 ==========
 

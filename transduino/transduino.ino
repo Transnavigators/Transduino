@@ -65,7 +65,7 @@
 #define PULSES_PER_METER 8555
 
 /// 5 ms delay for prod
-#define LOOP_DELAY 5  
+#define LOOP_DELAY 10 
 
 /**
  * @brief Define DEBUG to turn on debug mode
